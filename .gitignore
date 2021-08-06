@@ -1,0 +1,11 @@
+/freetype*/
+
+/src/.vscode
+/src/base
+/src/cache
+/src/freetype
+/src/sfnt
+/src/smooth
+/src/truetype
+
+/src/ft2build.h
