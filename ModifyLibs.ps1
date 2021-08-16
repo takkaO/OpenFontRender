@@ -24,6 +24,8 @@ Remove-Item "./src/base/ftmac.c" -Force -ErrorAction Ignore
 Remove-Item "./src/truetype/ttgxvar.h" -Force -ErrorAction Ignore
 Remove-Item "./src/truetype/ttgxvar.c" -Force -ErrorAction Ignore
 
+Rename-Item "./src/base/ftsystem.c" -NewName "ftsystem.cpp" -Force -ErrorAction Ignore
+
 $target = "./src/freetype/config/ftoption.h"
 Write-Host ("Processing " + $target)
 # Disable some options
@@ -63,11 +65,30 @@ $(Get-Content $target) -replace "^.*(FT_USE_MODULE.*sfnt_module_class.*)", "`$1"
 $(Get-Content $target) -replace "^.*(FT_USE_MODULE.*ft_smooth_renderer_class.*)", "`$1" | Set-Content $target
 
 
+$target = "./src/freetype/config/ftstdlib.h"
+Write-Host ("Processing " + $target)
+# Disable some options
+$(Get-Content $target) -replace "^(#define FT_FILE.*)", "//`$1" | Set-Content $target
+$(Get-Content $target) -replace "^(#define ft_fclose.*)", "//`$1" | Set-Content $target
+$(Get-Content $target) -replace "^(#define ft_fopen.*)", "//`$1" | Set-Content $target
+$(Get-Content $target) -replace "^(#define ft_fread.*)", "//`$1" | Set-Content $target
+$(Get-Content $target) -replace "^(#define ft_fseek.*)", "//`$1" | Set-Content $target
+$(Get-Content $target) -replace "^(#define ft_ftell.*)", "//`$1" | Set-Content $target
+
+
 $target = "./src/ft2build.h"
 if ( !($(Get-Content $target) -match "#define FT2_BUILD_LIBRARY") ) {
     # If the required definition does not exist
     Write-Host ("Processing " + $target)
     $(Get-Content -Raw $target) -replace "(?smi)^(#define \w*)([\r\n]+)", "`$1`$2#define FT2_BUILD_LIBRARY`$2" | Set-Content $target
+    #$(Get-Content $target) | Set-Content $target
+}
+
+$target = "./src/base/ftsystem.cpp"
+if ( !($(Get-Content $target) -match "#include `"../FileSupport.h`"") ) {
+    # If the required definition does not exist
+    Write-Host ("Processing " + $target)
+    $(Get-Content -Raw $target) -replace "(?smi)^(#include .*)([\r\n]+)", "#include `"../FileSupport.h`"`$2`$1`$2" | Set-Content $target
     #$(Get-Content $target) | Set-Content $target
 }
 

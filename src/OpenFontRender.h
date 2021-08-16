@@ -15,6 +15,8 @@
 #define setStartWrite(F) set_startWrite([&](void) { return F(); })
 #define setEndWrite(F) set_endWrite([&](void) { return F(); })
 
+#include "FileSupport.h"
+
 enum OFR_DEBUG_LEVEL {
 	OFR_NONE  = 0,
 	OFR_ERROR = 1,
@@ -42,6 +44,7 @@ public:
 	void setFontSize(size_t new_size);
 
 	FT_Error loadFont(const unsigned char *data, size_t size);
+	FT_Error loadFont(const char *fpath);
 	FT_Error drawChar(uint16_t unicode,
 	                  uint32_t x  = 0,
 	                  uint32_t y  = 0,
@@ -64,6 +67,13 @@ public:
 	void showFreeTypeVersion(Print &output = Serial);
 	void showCredit(Print &output = Serial);
 	void setDebugLevel(uint8_t level);
+
+	template <typename T>
+	void setDrawer(T &drawer) {
+		set_drawPixel([&](int32_t x, int32_t y, int16_t c) { return drawer.drawPixel(x, y, c); });
+		set_startWrite([&](void) { return drawer.startWrite(); });
+		set_endWrite([&](void) { return drawer.endWrite(); });
+	}
 
 	// Direct calls are deprecated.
 	void set_drawPixel(std::function<void(int32_t, int32_t, uint16_t)> user_func);

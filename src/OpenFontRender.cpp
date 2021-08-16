@@ -188,6 +188,49 @@ FT_Error OpenFontRender::loadFont(const unsigned char *data, size_t size) {
 	return FT_Err_Ok;
 }
 
+FT_Error OpenFontRender::loadFont(const char *fpath) {
+	FT_Face face;
+	FT_Error error;
+	FontDataInfo info = {FROM_FILE, (char *)fpath, nullptr, 0, _debug_level};
+
+	if (g_NeedInitialize) {
+		error = FT_Init_FreeType(&g_FtLibrary);
+		if (error) {
+			debugPrintf((_debug_level & OFR_ERROR), "FT_Init_FreeType error: 0x%02X\n", error);
+			return error;
+		}
+		g_NeedInitialize = false;
+	}
+
+	_face_id = g_AvailableFaceId++;
+	// 現在の引数は適当
+	error = FTC_Manager_New(g_FtLibrary, 0, 0, 0, &ftc_face_requester, &info, &_ftc_manager);
+	if (error) {
+		debugPrintf((_debug_level & OFR_ERROR), "FTC_Manager_New error: 0x%02X\n", error);
+		return error;
+	}
+
+	error = FTC_Manager_LookupFace(_ftc_manager, (FTC_FaceID)_face_id, &face);
+	if (error) {
+		debugPrintf((_debug_level & OFR_ERROR), "FTC_Manager_LookupFace error: 0x%02X\n", error);
+		return error;
+	}
+
+	error = FTC_CMapCache_New(_ftc_manager, &_ftc_cmap_cache);
+	if (error) {
+		debugPrintf((_debug_level & OFR_ERROR), "FTC_CMapCache_New error: 0x%02X\n", error);
+		return error;
+	}
+
+	error = FTC_SBitCache_New(_ftc_manager, &_ftc_sbit_cache);
+	if (error) {
+		debugPrintf((_debug_level & OFR_ERROR), "FTC_SBitCache_New error: 0x%02X\n", error);
+		return error;
+	}
+
+	return FT_Err_Ok;
+}
+
 FT_Error OpenFontRender::drawChar(uint16_t unicode, uint32_t x, uint32_t y, uint16_t fg, uint16_t bg) {
 	FT_Face face;
 	FT_Error error;
@@ -461,10 +504,21 @@ FT_Error ftc_face_requester(FTC_FaceID face_id, FT_Library library, FT_Pointer r
 	debugPrintf((info->debug_level & OFR_INFO), "Font load required. FaceId: %d\n", face_id);
 
 	if (info->from == FROM_FILE) {
-		// 未実装
-	} else if (info->from == FROM_MEMORY) {
+		debugPrintf((info->debug_level & OFR_INFO), "Load from file.\n");
 		const uint8_t FACE_INDEX = 0;
-		error                    = FT_New_Memory_Face(library, info->data, info->data_size, FACE_INDEX, face); // create face object
+
+		error = FT_New_Face(library, info->filepath, FACE_INDEX, face); // create face object
+		if (error) {
+			debugPrintf((info->debug_level & OFR_ERROR), "Font load Failed: 0x%02X\n", error);
+		} else {
+			debugPrintf((info->debug_level & OFR_INFO), "Font load Success!\n");
+		}
+
+	} else if (info->from == FROM_MEMORY) {
+		debugPrintf((info->debug_level & OFR_INFO), "Load from memory.\n");
+		const uint8_t FACE_INDEX = 0;
+
+		error = FT_New_Memory_Face(library, info->data, info->data_size, FACE_INDEX, face); // create face object
 		if (error) {
 			debugPrintf((info->debug_level & OFR_ERROR), "Font load Failed: 0x%02X\n", error);
 		} else {
@@ -541,6 +595,7 @@ void RenderTask(void *pvParameters) {
 			FTC_SBitRec sbit;
 			FTC_ScalerRec ft_scaler;
 			FT_Size ft_size;
+			vTaskDelay(1); // Important delay to prevent stack overflow
 			g_TaskParameter.error = FTC_Manager_LookupFace(*g_TaskParameter.ftc_manager,
 			                                               (FTC_FaceID)g_TaskParameter.face_id,
 			                                               &face);
@@ -550,12 +605,13 @@ void RenderTask(void *pvParameters) {
 			}
 
 			// set scaler parameters
-			ft_scaler.face_id     = (FTC_FaceID)g_TaskParameter.face_id;
-			ft_scaler.width       = 0;
-			ft_scaler.height      = g_TaskParameter.font_size;
-			ft_scaler.pixel       = true;
-			ft_scaler.x_res       = 0;
-			ft_scaler.y_res       = 0;
+			ft_scaler.face_id = (FTC_FaceID)g_TaskParameter.face_id;
+			ft_scaler.width   = 0;
+			ft_scaler.height  = g_TaskParameter.font_size;
+			ft_scaler.pixel   = true;
+			ft_scaler.x_res   = 0;
+			ft_scaler.y_res   = 0;
+			vTaskDelay(1); // Important delay to prevent stack overflow
 			g_TaskParameter.error = FTC_Manager_LookupSize(*g_TaskParameter.ftc_manager, &ft_scaler, &ft_size);
 			if (g_TaskParameter.error) {
 				debugPrintf((g_TaskParameter.debug_level & OFR_ERROR), "Render task error in LookupSize\n");
@@ -563,6 +619,7 @@ void RenderTask(void *pvParameters) {
 			}
 			face = ft_size->face;
 
+			vTaskDelay(1); // Important delay to prevent stack overflow
 			g_TaskParameter.error = FT_Load_Glyph(face, g_TaskParameter.glyph_index, FT_LOAD_DEFAULT);
 			if (g_TaskParameter.error) {
 				debugPrintf((g_TaskParameter.debug_level & OFR_ERROR), "Render task error in Load_Glyph\n");

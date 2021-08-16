@@ -26,6 +26,8 @@ rm -f "./src/base/ftmac.c"
 rm -f "./src/truetype/ttgxvar.h"
 rm -f "./src/truetype/ttgxvar.c"
 
+mv -f "./src/base/ftsystem.c" "./src/base/ftsystem.cpp"
+
 target="./src/freetype/config/ftoption.h"
 echo "Processing ${target}"
 # Disable some options
@@ -71,10 +73,32 @@ sed -i \
 -e "s|^.*\(FT_USE_MODULE.*ft_smooth_renderer_class.*\)|\1|" \
 $target
 
+
+target="./src/freetype/config/ftstdlib.h"
+echo "Processing ${target}"
+# Disable all modules
+sed -i \
+-e "s|^\(#define FT_FILE.*\)|//\1|" \
+-e "s|^\(#define ft_fclose.*\)|//\1|" \
+-e "s|^\(#define ft_fopen.*\)|//\1|" \
+-e "s|^\(#define ft_fread.*\)|//\1|" \
+-e "s|^\(#define ft_fseek.*\)|//\1|" \
+-e "s|^\(#define ft_ftell.*\)|//\1|" \
+$target
+
+
 target="./src/ft2build.h"
 if ! grep -q "^#define FT2_BUILD_LIBRARY" ${target}; then
 	echo "Processing ${target}"
 	sed -i -z -e "s|\(.*\)\(#define [a-zA-Z_0-9]\+\)\([\r\n]\+\)\(.*\)|\1\2\3#define FT2_BUILD_LIBRARY\3\4|" ${target}
 fi
+
+
+target="./src/base/ftsystem.cpp"
+if ! grep -q "^#include \"../FileSupport.h\"" ${target}; then
+	echo "Processing ${target}"
+	sed -i -z -e "s|\(.*\)\(#include [a-zA-Z_0-9]\+\)\([\r\n]\+\)\(.*\)|\1#include \"../FileSupport.h\"\3\2\3\4|" ${target}
+fi
+
 
 echo "** Finish modify FreeType libraries **"
