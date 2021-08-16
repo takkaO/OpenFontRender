@@ -13,11 +13,11 @@ enum LoadFontFrom {
 };
 
 typedef struct {
-	enum LoadFontFrom from;
-	char *filepath;
-	unsigned char *data;
-	size_t data_size;
-	uint8_t debug_level;
+	enum LoadFontFrom from;	// data source
+	char *filepath;			// ttf file path
+	unsigned char *data;	// ttf array
+	size_t data_size;		// ttf array size
+	uint8_t debug_level;	// debug level
 } FontDataInfo;
 
 #ifdef FREERTOS_CONFIG_H
@@ -30,15 +30,15 @@ enum RenderTaskStatus {
 };
 
 typedef struct {
-	enum RenderMode mode;
-	FTC_Manager *ftc_manager;
-	FTC_SBitCache *ftc_sbit_cache;
-	uint8_t face_id;
-	size_t font_size;
-	FT_UInt glyph_index;
-	FTC_SBit *sbit;
-	FT_Error error;
-	uint8_t debug_level;
+	enum RenderMode mode;			// Rendering mode
+	FTC_Manager *ftc_manager;		// ftc_manager obj
+	FTC_SBitCache *ftc_sbit_cache;	// ftc_sbit_cache obj
+	uint8_t face_id;				// face id
+	size_t font_size;				// font size
+	FT_UInt glyph_index;			// glyph index
+	FTC_SBit *sbit;					// result
+	FT_Error error;					// ft_error
+	uint8_t debug_level;			// debug level
 } RenderTaskParameter;
 #endif
 
@@ -637,14 +637,14 @@ void RenderTask(void *pvParameters) {
 			sbit = {
 			    face->glyph->bitmap.width,      // width
 			    face->glyph->bitmap.rows,       // height
-			    face->glyph->bitmap_left,       //left
-			    face->glyph->bitmap_top,        //top
-			    face->glyph->bitmap.pixel_mode, //format
+			    face->glyph->bitmap_left,       // left
+			    face->glyph->bitmap_top,        // top
+			    face->glyph->bitmap.pixel_mode, // format
 			    face->glyph->bitmap.num_grays,  // max_gray
-			    face->glyph->bitmap.pitch,      //pitch
-			    face->glyph->advance.x >> 6,    //xadvance
-			    face->glyph->advance.y >> 6,    //yadvance
-			    face->glyph->bitmap.buffer      //buffer
+			    face->glyph->bitmap.pitch,      // pitch
+			    face->glyph->advance.x >> 6,    // xadvance
+			    face->glyph->advance.y >> 6,    // yadvance
+			    face->glyph->bitmap.buffer      // buffer
 			};
 
 			vTaskDelay(1); // Important delay to prevent stack overflow
