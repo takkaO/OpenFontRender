@@ -1,0 +1,7 @@
+This library is provided under the FTL license.  
+It is a BSD-style license with a credit clause.  
+All programs and binaries created using this library must be credited (as shown at the bottom of this README).
+
+However, some files that are not related to FreeType can be used under the MIT license (See each files).
+
+For more information about FTL licenses, see `doc/FTL.TXT` in this repository or [FreeType Licenses](https://www.freetype.org/license.html).
