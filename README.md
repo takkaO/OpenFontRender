@@ -3,10 +3,10 @@
 TTF font render support library for microcomputer using Arduino IDE.  
 This library can render TTF font files in the SD card or TTF font files embedded in the program.
 
-This program is inspired by [M5FontRender]().  
+This program is inspired by [M5FontRender](https://github.com/takkaO/M5FontRender).  
 **Any small contribution is welcome.**
 
-image
+![image](https://github.com/takkaO/OpenFontRender/blob/images/image.jpg)
 
 
 ## Features
@@ -45,9 +45,9 @@ OpenFontRender render;
 void setup() {
 	// put your setup code here, to run once:
 	Serial.begin(115200);
-	while (!Serial) {
-		delay(1);
-	}
+	Serial.flush();
+	delay(50);
+    
 	tft.begin();
 	tft.setRotation(3);
 	tft.fillScreen(TFT_BLACK);
@@ -128,6 +128,15 @@ void loop() {
 ```
 
 ## How to create binary TTF file
+
+We use [binary2ttf.py]() in tools directory to create binary TTF font file.  
+The ```binary2ttf.py``` is provided in the [M5EPD](https://github.com/m5stack/M5EPD/tree/main/tools/ttf2bin) library.
+The same program is included in ```tools``` directory in this repo.  
+You only execute below command.
+
+```sh
+python3 binary2ttf.py your_font_file.ttf
+```
 
 ## Switch draw function
 
