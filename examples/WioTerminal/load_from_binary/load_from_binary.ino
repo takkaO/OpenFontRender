@@ -9,10 +9,9 @@ void setup()
 {
 	// put your setup code here, to run once:
 	Serial.begin(115200);
-	while (!Serial)
-	{
-		delay(1);
-	}
+	Serial.flush();
+    delay(50);
+	
 	tft.begin();
 	tft.setRotation(3);
 	tft.fillScreen(TFT_BLACK);

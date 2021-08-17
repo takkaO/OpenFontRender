@@ -8,10 +8,9 @@ void setup()
 {
 	// put your setup code here, to run once:
 	Serial.begin(115200);
-	while (!Serial)
-	{
-		delay(1);
-	}
+	Serial.flush();
+    delay(50);
+	
 	if (!SD.begin(SDCARD_SS_PIN, SDCARD_SPI))
 	{
 		Serial.println("SD initialization failed!");

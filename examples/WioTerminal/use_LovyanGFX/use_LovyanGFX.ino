@@ -14,10 +14,9 @@ void setup()
 {
 	// put your setup code here, to run once:
 	Serial.begin(115200);
-	while (!Serial)
-	{
-		delay(1);
-	}
+	Serial.flush();
+    delay(50);
+	
 	lcd.begin();
 	lcd.setRotation(1);
 	lcd.fillScreen(TFT_BLACK);
