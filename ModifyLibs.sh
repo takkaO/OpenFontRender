@@ -84,6 +84,9 @@ sed -i \
 -e "s|^\(#define ft_fread.*\)|//\1|" \
 -e "s|^\(#define ft_fseek.*\)|//\1|" \
 -e "s|^\(#define ft_ftell.*\)|//\1|" \
+-e "s|^\(#define ft_scalloc.*\)|//\1|" \
+-e "s|^\(#define ft_smalloc.*\)|//\1|" \
+-e "s|^\(#define ft_srealloc.*\)|//\1|" \
 $target
 
 

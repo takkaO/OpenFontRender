@@ -75,6 +75,10 @@ $(Get-Content $target) -replace "^(#define ft_fread.*)", "//`$1" | Set-Content $
 $(Get-Content $target) -replace "^(#define ft_fseek.*)", "//`$1" | Set-Content $target
 $(Get-Content $target) -replace "^(#define ft_ftell.*)", "//`$1" | Set-Content $target
 
+$(Get-Content $target) -replace "^(#define ft_scalloc.*)", "//`$1" | Set-Content $target
+$(Get-Content $target) -replace "^(#define ft_smalloc.*)", "//`$1" | Set-Content $target
+$(Get-Content $target) -replace "^(#define ft_srealloc.*)", "//`$1" | Set-Content $target
+
 
 $target = "./src/ft2build.h"
 if ( !($(Get-Content $target) -match "#define FT2_BUILD_LIBRARY") ) {

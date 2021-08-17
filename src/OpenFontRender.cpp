@@ -1,3 +1,13 @@
+// -------------------------------------------------------
+//  OpenFontRender.cpp
+//
+//  Copyright (c) 2021 takkaO
+//
+//  If you use, modify or redistribute this file as part of 
+//  the original repository, please follow the repository's license.
+// 
+// -------------------------------------------------------
+
 #include "OpenFontRender.h"
 
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_//_/_/_/_/_/_/_/_/_/*/
@@ -229,6 +239,13 @@ FT_Error OpenFontRender::loadFont(const char *fpath) {
 	}
 
 	return FT_Err_Ok;
+}
+
+void OpenFontRender::unloadFont() {
+	FTC_Manager_Reset(_ftc_manager);
+	FTC_Manager_Done(_ftc_manager);
+	FT_Done_FreeType(g_FtLibrary);
+	g_NeedInitialize = true;
 }
 
 FT_Error OpenFontRender::drawChar(uint16_t unicode, uint32_t x, uint32_t y, uint16_t fg, uint16_t bg) {

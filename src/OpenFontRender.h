@@ -1,3 +1,13 @@
+// -------------------------------------------------------
+//  OpenFontRender.h
+//
+//  Copyright (c) 2021 takkaO
+//
+//  If you use, modify or redistribute this file as part of
+//  the original repository, please follow the repository's license.
+//
+// -------------------------------------------------------
+
 #ifndef OPEN_FONT_RENDER_H
 #define OPEN_FONT_RENDER_H
 
@@ -11,7 +21,7 @@
 
 #undef min
 #include <functional>
-#define setDrawPixel(F) set_drawPixel([&](int32_t x, int32_t y, int16_t c) { return F(x, y, c); })
+#define setDrawPixel(F) set_drawPixel([&](int32_t x, int32_t y, uint16_t c) { return F(x, y, c); })
 #define setStartWrite(F) set_startWrite([&](void) { return F(); })
 #define setEndWrite(F) set_endWrite([&](void) { return F(); })
 
@@ -45,6 +55,7 @@ public:
 
 	FT_Error loadFont(const unsigned char *data, size_t size);
 	FT_Error loadFont(const char *fpath);
+	void unloadFont();
 	FT_Error drawChar(uint16_t unicode,
 	                  uint32_t x  = 0,
 	                  uint32_t y  = 0,
@@ -70,7 +81,7 @@ public:
 
 	template <typename T>
 	void setDrawer(T &drawer) {
-		set_drawPixel([&](int32_t x, int32_t y, int16_t c) { return drawer.drawPixel(x, y, c); });
+		set_drawPixel([&](int32_t x, int32_t y, uint16_t c) { return drawer.drawPixel(x, y, c); });
 		set_startWrite([&](void) { return drawer.startWrite(); });
 		set_endWrite([&](void) { return drawer.endWrite(); });
 	}

@@ -1,3 +1,13 @@
+// -------------------------------------------------------
+//  FileSupport.cpp
+//
+//  Copyright (c) 2021 takkaO
+//
+//  If you use, modify or redistribute this file as part of
+//  the original repository, please follow the repository's license.
+//
+// -------------------------------------------------------
+
 #include "FileSupport.h"
 
 #if defined(ARDUINO_WIO_TERMINAL) || defined(ENABLE_M5STACK)

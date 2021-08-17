@@ -128,10 +128,10 @@
   /**********************************************************************/
 
 
-#define ft_scalloc   calloc
+//#define ft_scalloc   calloc
 #define ft_sfree     free
-#define ft_smalloc   malloc
-#define ft_srealloc  realloc
+//#define ft_smalloc   malloc
+//#define ft_srealloc  realloc
 
 
   /**********************************************************************/

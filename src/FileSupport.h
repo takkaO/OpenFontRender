@@ -1,3 +1,13 @@
+// -------------------------------------------------------
+//  FileSupport.h
+//
+//  Copyright (c) 2021 takkaO
+//
+//  If you use, modify or redistribute this file as part of
+//  the original repository, please follow the repository's license.
+//
+// -------------------------------------------------------
+
 #ifndef FILE_SUPPORT_H
 #define FILE_SUPPORT_H
 
@@ -6,9 +16,8 @@
 #endif
 
 #if defined(ARDUINO_WIO_TERMINAL)
-#include "SD/Seeed_SD.h"
 #include <SPI.h>
-#include <Seeed_FS.h>
+#include <Seeed_Arduino_FS.h>
 
 #else if defined(ENABLE_M5STACK)
 #include <SD.h>
@@ -45,6 +54,20 @@ long int ffsupport_ftell(fileclass_t *stream);
 #define ft_fread fread
 #define ft_fseek fseek
 #define ft_ftell ftell
+
+#endif
+
+#ifdef CONFIG_SPIRAM_SUPPORT
+
+#define ft_scalloc ps_calloc
+#define ft_smalloc ps_malloc
+#define ft_srealloc ps_realloc
+
+#else
+
+#define ft_scalloc calloc
+#define ft_smalloc malloc
+#define ft_srealloc realloc
 
 #endif
 
