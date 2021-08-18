@@ -1,12 +1,18 @@
 # API
 
+---
+
+## Font loading API
+
+---
+
 ```c++
 FT_Error loadFont(const unsigned char *data, size_t size)
 ```
 
 ### Features
 
-コードに埋め込まれたフォントデータを読み込みます。
+Reads the font data embedded in the program code.
 
 ### Args
 
@@ -29,7 +35,7 @@ FT_Error loadFont(const char *fpath)
 
 ### Features
 
-外部ストレージ（SD カード）からフォントデータを読み込みます。
+Load font data from external storage (SD card).
 
 ### Args
 
@@ -51,7 +57,7 @@ void unloadFont()
 
 ### Features
 
-外部ストレージ（SD カード）からフォントデータを読み込みます。
+Unload font data.
 
 ### Args
 
@@ -60,6 +66,10 @@ None
 ### Return
 
 None
+
+---
+
+## Rendering API
 
 ---
 
@@ -73,7 +83,7 @@ FT_Error drawChar(uint16_t unicode,
 
 ### Features
 
-指定された１文字を描画します。
+Draws a single character specified in Unicode.
 
 ### Args
 
@@ -103,7 +113,7 @@ uint16_t drawString(const char *str,
 
 ### Features
 
-指定された文字列を描画します。
+Draws the specified string.
 
 ### Args
 
@@ -134,7 +144,7 @@ uint16_t drawString(const char *str,
 
 ### Features
 
-指定された文字列を描画します。
+Draws the specified string.
 
 ### Args
 
@@ -161,7 +171,7 @@ uint16_t printf(const char *fmt, ...)
 
 ### Features
 
-指定されたフォーマット文字列を描画します。
+Draws the specified format string.
 
 ### Args
 
@@ -178,12 +188,462 @@ uint16_t printf(const char *fmt, ...)
 ---
 
 ```c++
+void setDrawPixel(Function f)
+```
+
+### Features
+
+Set the function for drawing on the LCD.
+
+### Args
+
+| Type     | Name | Description         |
+| -------- | :--: | ------------------- |
+| Function |  f   | Draw pixel function |
+
+### Return
+
+None
+
+### Note
+
+The function to be given must be a function like the one below that takes a specific argument.
+
+```c++
+void example_function (int32_t x, int32_t y, uint16_t c)
+```
+
+| Type    | Name | Description               |
+| ------- | :--: | ------------------------- |
+| int32_t |  x   | Draw position X           |
+| int32_t |  y   | Draw position Y           |
+| int32_t |  c   | Draw color (16 bit color) |
+
+---
+
+```c++
+void setStartWrite(Function f)
+```
+
+### Features
+
+It is called only once at the beginning of a sequence of drawings.  
+Certain libraries can occupy the bus during continuous drawing to increase the drawing speed.
+
+### Args
+
+| Type     | Name | Description   |
+| -------- | :--: | ------------- |
+| Function |  f   | user function |
+
+### Return
+
+None
+
+### Note
+
+The function to be given must be a function like the one below that takes a specific argument.
+
+```c++
+void example_function (void)
+```
+
+---
+
+```c++
+void setEndWrite(Function f)
+```
+
+### Features
+
+It is called only once at the end of a sequence of drawings.  
+Certain libraries can occupy the bus during continuous drawing to increase the drawing speed.
+
+### Args
+
+| Type     | Name | Description   |
+| -------- | :--: | ------------- |
+| Function |  f   | user function |
+
+### Return
+
+None
+
+### Note
+
+The function to be given must be a function like the one below that takes a specific argument.
+
+```c++
+void example_function (void)
+```
+
+---
+
+```c++
+template <typename T> void setDrawer(T &drawer)
+```
+
+### Features
+
+If any object drawer has `drawPixel`, `startWrite`, and `endWrite` methods, you can use this function to automatically call `setDrawPixel`, `startWrite`, and `endWrite`.
+
+### Args
+
+| Type |  Name  | Description |
+| ---- | :----: | ----------- |
+| Any  | drawer | user object |
+
+### Return
+
+None
+
+### Note
+
+Inside the function, the following process takes place.
+
+```c++
+template <typename T> void setDrawer(T &drawer) {
+    setDrawPixel(drawer.drawPixel);
+    setStartWrite(drawer.startWrite);
+    setEndWrite(drawer.endWrite);
+}
+```
+
+---
+
+## FreeRTOS-related API
+
+---
+
+```c++
+void setUseRenderTask(bool enable)
+```
+
+### Features
+
+Set whether or not to create a render task.
+This is meaningless if you are not using FreeRTOS.
+Default is `false`.
+
+### Args
+
+| Type |  Name  | Description                      |
+| ---- | :----: | -------------------------------- |
+| bool | enable | Enable (true) or Disable (false) |
+
+### Return
+
+None
+
+### Note
+
+If you NOT use FreeType 2.4.12, recommend to set `enable`.
+
+---
+
+```c++
+void setRenderTaskMode(enum RenderMode mode)
+```
+
+### Features
+
+Set the operation mode of the renderer task.
+This is meaningless if you are not using FreeRTOS.
+Default is `NORMAL`.
+
+### Args
+
+| Type            | Name | Description              |
+| --------------- | :--: | ------------------------ |
+| enum RenderMode | mode | `NORMAL` or `WITH_CACHE` |
+
+### Return
+
+None
+
+---
+
+## Cursor operation API
+
+---
+
+```c++
+void setCursor(uint32_t x, uint32_t y)
+```
+
+### Features
+
+Set the position of the internal cursor held by the renderer.
+It is used when drawing with the `printf` function.
+
+### Args
+
+| Type     | Name | Description         |
+| -------- | :--: | ------------------- |
+| uint32_t |  x   | X coordinate to set |
+| uint32_t |  y   | Y coordinate to set |
+
+### Return
+
+None
+
+---
+
+```c++
+uint32_t getCursorX()
+```
+
+### Features
+
+Get the X coordinate of the internal cursor held by the renderer.
+
+### Args
+
+None
+
+### Return
+
+| Type     | Description          |
+| -------- | -------------------- |
+| uint32_t | Current X coordinate |
+
+---
+
+```c++
+uint32_t getCursorY()
+```
+
+### Features
+
+Get the Y coordinate of the internal cursor held by the renderer.
+
+### Args
+
+None
+
+### Return
+
+| Type     | Description          |
+| -------- | -------------------- |
+| uint32_t | Current Y coordinate |
+
+---
+
+```c++
+void seekCursor(int32_t delta_x, int32_t delta_y)
+```
+
+### Features
+
+Shifts the position of the internal cursor held by the renderer by the specified amount.  
+This is useful for making fine adjustments.
+
+### Args
+
+| Type     |  Name   | Description          |
+| -------- | :-----: | -------------------- |
+| uint32_t | delta_x | X coordinate to move |
+| uint32_t | delta_y | Y coordinate to move |
+
+### Return
+
+None
+
+---
+
+## Font-related API
+
+---
+
+```c++
+void setFontColor(uint16_t font_color)
+```
+
+### Features
+
+Set the font color to be retained by the renderer.
+It is used when drawing with the `printf` function.
+
+### Args
+
+| Type     |    Name    | Description                      |
+| -------- | :--------: | -------------------------------- |
+| uint16_t | font_color | Font color to set (16 bit color) |
+
+### Return
+
+None
+
+---
+
+```c++
+void setFontColor(uint16_t font_color, uint16_t font_bgcolor)
+```
+
+### Features
+
+Set the font color and background color to be retained by the renderer.
+It is used when drawing with the `printf` function.
+
+### Args
+
+| Type     |     Name     | Description                                 |
+| -------- | :----------: | ------------------------------------------- |
+| uint16_t |  font_color  | Font color to set (16 bit color)            |
+| uint16_t | font_bgcolor | Font background color to set (16 bit color) |
+
+### Return
+
+None
+
+---
+
+```c++
+void setFontColor(uint8_t r, uint8_t g, uint8_t b)
+```
+
+### Features
+
+Set the font color to be retained by the renderer.
+It is used when drawing with the `printf` function.
+
+### Args
+
+| Type    | Name | Description       |
+| ------- | :--: | ----------------- |
+| uint8_t |  r   | Red color value   |
+| uint8_t |  g   | Green color value |
+| uint8_t |  b   | Blue color value  |
+
+### Return
+
+None
+
+---
+
+```c++
+void setFontColor(uint8_t fr,
+                  uint8_t fg,
+                  uint8_t fb,
+                  uint8_t br,
+                  uint8_t bg,
+                  uint8_t bb)
+```
+
+### Features
+
+Set the font color and background color to be retained by the renderer.
+It is used when drawing with the `printf` function.
+
+### Args
+
+| Type    | Name | Description                      |
+| ------- | :--: | -------------------------------- |
+| uint8_t |  fr  | Red color value for font         |
+| uint8_t |  fg  | Green color value for font       |
+| uint8_t |  fb  | Blue color value for font        |
+| uint8_t |  br  | Red color value for background   |
+| uint8_t |  bg  | Green color value for background |
+| uint8_t |  bb  | Blue color value for background  |
+
+### Return
+
+None
+
+---
+
+```c++
+uint16_t getFontColor()
+```
+
+### Features
+
+Get the font color to be retained by the renderer.
+
+### Args
+
+None
+
+### Return
+
+| Type     | Description               |
+| -------- | ------------------------- |
+| uint16_t | Font color (16 bit color) |
+
+---
+
+```c++
+uint16_t getBackgroundColor()
+```
+
+### Features
+
+Get the background color to be retained by the renderer.
+
+### Args
+
+None
+
+### Return
+
+| Type     | Description                     |
+| -------- | ------------------------------- |
+| uint16_t | Background color (16 bit color) |
+
+---
+
+```c++
+void setFontSize(size_t new_size)
+```
+
+### Features
+
+Set the font size to be retained by the renderer.  
+It is used when drawing with the `printf` function.
+
+### Args
+
+| Type   |   Name   | Description   |
+| ------ | :------: | ------------- |
+| size_t | new_size | New font size |
+
+### Return
+
+None
+
+---
+
+```c++
+size_t getFontSize();
+```
+
+### Features
+
+Get the font size to be retained by the renderer.
+
+### Args
+
+None
+
+### Return
+
+| Type   | Description       |
+| ------ | ----------------- |
+| size_t | Current font size |
+
+---
+
+## Other API
+
+---
+
+```c++
 void showFreeTypeVersion(Print &output = Serial)
 ```
 
 ### Features
 
-使用中の FreeType ライブラリのバージョンを出力します。
+Outputs the version of the FreeType library in use.
 
 ### Args
 
@@ -203,7 +663,7 @@ void showCredit(Print &output = Serial)
 
 ### Features
 
-FTL ライセンスに準拠したクレジット表記を出力します。
+Outputs a credit notation that complies with the FTL license.
 
 ### Args
 
@@ -223,7 +683,7 @@ void setDebugLevel(uint8_t level)
 
 ### Features
 
-シリアル出力するレベルを指定します。
+Set the level for serial output.
 
 ### Args
 
@@ -237,79 +697,14 @@ None
 
 ### Note
 
-デバッグレベルは以下のように定義されており、`OR`演算子で複数指定することができます。
+The debug level is defined as follows, and multiple levels can be specified with the `OR` operator.  
+Note that it will run slower, however!
 
-| Level     | Description                      |
-| --------- | -------------------------------- |
-| OFR_NONE  | 何も出力しません                 |
-| OFR_ERROR | エラーが起きた場合のみ出力します |
-| OFR_INFO  | 処理内容を細かく通知します       |
-| OFR_DEBUG | レンダリングした文字を出力します |
-
----
-
-```c++
-void setUseRenderTask(bool enable)
-```
-
-### Features
-
-レンダータスクを作成するかどうかを指定します。
-FreeRTOS を使用していない場合は、意味がありません。
-
-### Args
-
-| Type |  Name  | Description                      |
-| ---- | :----: | -------------------------------- |
-| bool | enable | Enable (true) or Disable (false) |
-
-### Return
-
-None
-
-### Note
-
-If you NOT use FreeType 2.4.12, recommend to set Enable.
+| Level     | Description                                 |
+| --------- | ------------------------------------------- |
+| OFR_NONE  | Nothing is output.                          |
+| OFR_ERROR | Output only when an error occurs.           |
+| OFR_INFO  | Detailed notification of processing details |
+| OFR_DEBUG | Output the rendered character               |
 
 ---
-
-```c++
-void setRenderTaskMode(enum RenderMode mode)
-```
-
-### Features
-
-レンダータスクの動作モードを指定します。
-FreeRTOS を使用していない場合は、呼び出しても何もしません。
-
-### Args
-
-| Type            | Name | Description              |
-| --------------- | :--: | ------------------------ |
-| enum RenderMode | mode | `NORMAL` or `WITH_CACHE` |
-
-### Return
-
-None
-
----
-
-```c++
-void setCursor(uint32_t x, uint32_t y)
-```
-
-### Features
-
-レンダラーが保持する内部カーソルの位置を指定します。
-`printf`関数で描画する際に使用されます。
-
-### Args
-
-| Type     | Name | Description         |
-| -------- | :--: | ------------------- |
-| uint32_t |  x   | X Coordinate to set |
-| uint32_t |  y   | Y Coordinate to set |
-
-### Return
-
-None

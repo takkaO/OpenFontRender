@@ -51,7 +51,17 @@ public:
 	void seekCursor(int32_t delta_x, int32_t delta_y);
 	void setFontColor(uint16_t font_color);
 	void setFontColor(uint16_t font_color, uint16_t font_bgcolor);
+	void setFontColor(uint8_t r, uint8_t g, uint8_t b);
+	void setFontColor(uint8_t fr,
+	                  uint8_t fg, 
+					  uint8_t fb, 
+					  uint8_t br, 
+					  uint8_t bg, 
+					  uint8_t bb);
+	uint16_t getFontColor();
+	uint16_t getBackgroundColor();
 	void setFontSize(size_t new_size);
+	size_t getFontSize();
 
 	FT_Error loadFont(const unsigned char *data, size_t size);
 	FT_Error loadFont(const char *fpath);

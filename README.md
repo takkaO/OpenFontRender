@@ -25,7 +25,7 @@ Clone this repository into Arduino library folder.
 
 ### API
 
-See [HERE](/doc/API.md) for a list of available APIs.
+See [HERE](doc/API.md) for a list of available APIs.
 
 ### Usage
 
@@ -143,9 +143,33 @@ python3 binary2ttf.py your_font_file.ttf
 In this library, you can change the drawing-related operations to your favorite functions (e.g. LavyonGFX).  
 To change it, use the following function.
 
+```c++
+render.setDrawPixel(my_draw_function);         // necessary
+
+render.setStartWrite(my_start_write_function); // optional
+render.setEndWrite(my_end_write_function);     // optional
+```
+
+See [API.md](doc/API.md) for more detailed instructions.
+
 ## Switch other FreeType version
 
-## Tested
+You can switch to any FreeType version in this library.  
+We have confirmed that it works with 2.4.12 and 2.11.0.  
+Default version is 2.4.12 because it was the version that worked most stably.  
+
+### How to switch
+
+1. Download the version of FreeType that you like.
+2. Place the downloaded FreeType folder directly under OpenFontRender.
+3. Execute ```AutoRun``` script.
+
+### Note
+
+If you are using FreeRTOS, some versions may become unstable.  
+You may have to increase the stack size or enable useRenderTask to get it to work.
+
+## Test
 
 ### Tested Hardware
 
@@ -178,6 +202,33 @@ However, some files that are not related to FreeType can be used under the MIT l
 For more information about FTL licenses, see `doc/FTL.TXT` in this repository or [FreeType Licenses](https://www.freetype.org/license.html).
 
 ## Reference
+
+### FreeType
+
+- [FreeType-2.11.0 API Reference](https://www.freetype.org/freetype2/docs/reference/index.html)
+- [FreeType に関するメモ](http://ncl.sakura.ne.jp/doc/ja/comp/freetype-memo.html#ft-bitmap)
+- [FreeType2を試す-3-小さいサイズで描画 | ぬの部屋（仮）](https://suzulang.com/freetype2-3-small-size/)
+- [True type fontのレンダリング　その2 - 忘備録-備忘録](https://blog.goo.ne.jp/lm324/e/9839bdff2c26272596c6ccebaafb78aa)
+- [libvita2d/vita2d_font.c at master · xerpi/libvita2d](https://github.com/xerpi/libvita2d/blob/master/libvita2d/source/vita2d_font.c)
+- [freetype 函数介绍_guoke312的专栏-程序员宅基地 - 程序员宅基地](https://www.cxyzjd.com/article/guoke312/79552120)
+- [Freetype 内存回收 / 计算机图形/GUI/RTOS/FileSystem/OpenGL/DirectX/SDL2 / WhyCan Forum(哇酷开发者社区)](https://whycan.com/t_2984.html)
+- [FreeType 2 Caching](https://www.sivachandran.in/2009/04/freetype-2-caching.html)
+- [C++ (Cpp) FTC_Manager_LookupSize Examples - HotExamples](https://cpp.hotexamples.com/examples/-/-/FTC_Manager_LookupSize/cpp-ftc_manager_lookupsize-function-examples.html)
+- [FreeType的缓存 - 百度文库](https://wenku.baidu.com/view/046d34f90242a8956bece444.html)
+- [freeType移植总结①——使用keil编译freeType2库 - 编程猎人](https://www.programminghunter.com/article/6736670540/)
+- [FreeTypeの使い方 - Qiita](https://qiita.com/496_/items/6d2540e26d66c9ed5f9a)
+- [じぶんめも Qtでfreetype](http://mochimocchi601.blog.fc2.com/blog-entry-4.html)
+- [C++ (Cpp) FT_Glyph_To_Bitmapの例 - HotExamples](https://cpp.hotexamples.com/jp/examples/-/-/FT_Glyph_To_Bitmap/cpp-ft_glyph_to_bitmap-function-examples.html)
+- [freetype2 - example1.c](https://www.freetype.org/freetype2/docs/tutorial/example1.c)
+- [FreeType2でフォントテクスチャ作る際のコツ。ピクセルサイズで作るのと文字送り量の取得 - GameProgrammar's Night](https://katze.hatenablog.jp/entry/2013/07/16/232911)
+- [FreeTypeのベースラインあわせでかなりハマッタのでメモ - くそにそてくにっく](https://niso1985.hatenadiary.org/entry/20090907/1252339660)
+
+### Other
+
+- [Deleting a task and erasing it's handler - FreeRTOS](https://www.freertos.org/FreeRTOS_Support_Forum_Archive/October_2015/freertos_Deleting_a_task_and_erasing_its_handler_bb9bbcdbj.html)
+- [FreeRTOS タスクスケジューリングまとめ - Qiita](https://qiita.com/MoriokaReimen/items/fe287a8bae1ce37849ae)
+- [sedの正規表現で「\w」「\d」「\s」を実現する方法: 小粋空間](https://www.koikikukan.com/archives/2014/12/05-011111.php)
+- [Regex in Powershell fails to check for newlines - Stack Overflow](https://stackoverflow.com/questions/52633995/regex-in-powershell-fails-to-check-for-newlines)
 
 ---
 

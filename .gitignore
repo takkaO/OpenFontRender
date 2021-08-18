@@ -1,3 +1,7 @@
 /freetype*/
+/.vscode
+
+/tools/ttf2bin/*
+!/tools/ttf2bin/ttf2bin.py
 
 /src/.vscode

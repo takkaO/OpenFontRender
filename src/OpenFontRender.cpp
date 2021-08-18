@@ -3,9 +3,9 @@
 //
 //  Copyright (c) 2021 takkaO
 //
-//  If you use, modify or redistribute this file as part of 
+//  If you use, modify or redistribute this file as part of
 //  the original repository, please follow the repository's license.
-// 
+//
 // -------------------------------------------------------
 
 #include "OpenFontRender.h"
@@ -23,11 +23,11 @@ enum LoadFontFrom {
 };
 
 typedef struct {
-	enum LoadFontFrom from;	// data source
-	char *filepath;			// ttf file path
-	unsigned char *data;	// ttf array
-	size_t data_size;		// ttf array size
-	uint8_t debug_level;	// debug level
+	enum LoadFontFrom from; // data source
+	char *filepath;         // ttf file path
+	unsigned char *data;    // ttf array
+	size_t data_size;       // ttf array size
+	uint8_t debug_level;    // debug level
 } FontDataInfo;
 
 #ifdef FREERTOS_CONFIG_H
@@ -40,15 +40,15 @@ enum RenderTaskStatus {
 };
 
 typedef struct {
-	enum RenderMode mode;			// Rendering mode
-	FTC_Manager *ftc_manager;		// ftc_manager obj
-	FTC_SBitCache *ftc_sbit_cache;	// ftc_sbit_cache obj
-	uint8_t face_id;				// face id
-	size_t font_size;				// font size
-	FT_UInt glyph_index;			// glyph index
-	FTC_SBit *sbit;					// result
-	FT_Error error;					// ft_error
-	uint8_t debug_level;			// debug level
+	enum RenderMode mode;          // Rendering mode
+	FTC_Manager *ftc_manager;      // ftc_manager obj
+	FTC_SBitCache *ftc_sbit_cache; // ftc_sbit_cache obj
+	uint8_t face_id;               // face id
+	size_t font_size;              // font size
+	FT_UInt glyph_index;           // glyph index
+	FTC_SBit *sbit;                // result
+	FT_Error error;                // ft_error
+	uint8_t debug_level;           // debug level
 } RenderTaskParameter;
 #endif
 
@@ -151,8 +151,29 @@ void OpenFontRender::setFontColor(uint16_t font_color, uint16_t font_bgcolor) {
 	_font.bg_color = font_bgcolor;
 }
 
+void OpenFontRender::setFontColor(uint8_t r, uint8_t g, uint8_t b) {
+	_font.fg_color = color565(r, g, b);
+}
+
+void OpenFontRender::setFontColor(uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg, uint8_t bb) {
+	_font.fg_color = color565(fr, fg, fb);
+	_font.bg_color = color565(br, bg, bb);
+}
+
+uint16_t OpenFontRender::getFontColor() {
+	return _font.fg_color;
+}
+
+uint16_t OpenFontRender::getBackgroundColor() {
+	return _font.bg_color;
+}
+
 void OpenFontRender::setFontSize(size_t new_size) {
 	_font.size = new_size;
+}
+
+size_t OpenFontRender::getFontSize() {
+	return _font.size;
 }
 
 FT_Error OpenFontRender::loadFont(const unsigned char *data, size_t size) {
