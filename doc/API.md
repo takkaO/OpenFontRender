@@ -10,11 +10,11 @@
 FT_Error loadFont(const unsigned char *data, size_t size)
 ```
 
-### Features
+### Summary
 
 Reads the font data embedded in the program code.
 
-### Args
+### Arguments
 
 | Type                   | Name | Description   |
 | ---------------------- | :--: | ------------- |
@@ -33,11 +33,11 @@ Reads the font data embedded in the program code.
 FT_Error loadFont(const char *fpath)
 ```
 
-### Features
+### Summary
 
 Load font data from external storage (SD card).
 
-### Args
+### Arguments
 
 | Type          | Name  | Description |
 | ------------- | :---: | ----------- |
@@ -55,11 +55,11 @@ Load font data from external storage (SD card).
 void unloadFont()
 ```
 
-### Features
+### Summary
 
 Unload font data.
 
-### Args
+### Arguments
 
 None
 
@@ -81,11 +81,11 @@ FT_Error drawChar(uint16_t unicode,
                   uint16_t bg = 0x0000)
 ```
 
-### Features
+### Summary
 
 Draws a single character specified in Unicode.
 
-### Args
+### Arguments
 
 | Type     |  Name   | Description                            |
 | -------- | :-----: | -------------------------------------- |
@@ -111,11 +111,11 @@ uint16_t drawString(const char *str,
                     uint16_t bg = 0x0000)
 ```
 
-### Features
+### Summary
 
 Draws the specified string.
 
-### Args
+### Arguments
 
 | Type          | Name | Description                            |
 | ------------- | :--: | -------------------------------------- |
@@ -142,11 +142,11 @@ uint16_t drawString(const char *str,
                     FT_Error *error)
 ```
 
-### Features
+### Summary
 
 Draws the specified string.
 
-### Args
+### Arguments
 
 | Type          | Name  | Description                            |
 | ------------- | :---: | -------------------------------------- |
@@ -169,11 +169,11 @@ Draws the specified string.
 uint16_t printf(const char *fmt, ...)
 ```
 
-### Features
+### Summary
 
 Draws the specified format string.
 
-### Args
+### Arguments
 
 | Type          | Name | Description   |
 | ------------- | :--: | ------------- |
@@ -191,11 +191,11 @@ Draws the specified format string.
 void setDrawPixel(Function f)
 ```
 
-### Features
+### Summary
 
 Set the function for drawing on the LCD.
 
-### Args
+### Arguments
 
 | Type     | Name | Description         |
 | -------- | :--: | ------------------- |
@@ -225,12 +225,12 @@ void example_function (int32_t x, int32_t y, uint16_t c)
 void setStartWrite(Function f)
 ```
 
-### Features
+### Summary
 
 It is called only once at the beginning of a sequence of drawings.  
 Certain libraries can occupy the bus during continuous drawing to increase the drawing speed.
 
-### Args
+### Arguments
 
 | Type     | Name | Description   |
 | -------- | :--: | ------------- |
@@ -254,12 +254,12 @@ void example_function (void)
 void setEndWrite(Function f)
 ```
 
-### Features
+### Summary
 
 It is called only once at the end of a sequence of drawings.  
 Certain libraries can occupy the bus during continuous drawing to increase the drawing speed.
 
-### Args
+### Arguments
 
 | Type     | Name | Description   |
 | -------- | :--: | ------------- |
@@ -283,11 +283,11 @@ void example_function (void)
 template <typename T> void setDrawer(T &drawer)
 ```
 
-### Features
+### Summary
 
 If any object drawer has `drawPixel`, `startWrite`, and `endWrite` methods, you can use this function to automatically call `setDrawPixel`, `startWrite`, and `endWrite`.
 
-### Args
+### Arguments
 
 | Type |  Name  | Description |
 | ---- | :----: | ----------- |
@@ -319,13 +319,13 @@ template <typename T> void setDrawer(T &drawer) {
 void setUseRenderTask(bool enable)
 ```
 
-### Features
+### Summary
 
-Set whether or not to create a render task.
+Set whether or not to create a render task.  
 This is meaningless if you are not using FreeRTOS.
 Default is `false`.
 
-### Args
+### Arguments
 
 | Type |  Name  | Description                      |
 | ---- | :----: | -------------------------------- |
@@ -345,13 +345,13 @@ If you NOT use FreeType 2.4.12, recommend to set `enable`.
 void setRenderTaskMode(enum RenderMode mode)
 ```
 
-### Features
+### Summary
 
-Set the operation mode of the renderer task.
+Set the operation mode of the renderer task.  
 This is meaningless if you are not using FreeRTOS.
 Default is `NORMAL`.
 
-### Args
+### Arguments
 
 | Type            | Name | Description              |
 | --------------- | :--: | ------------------------ |
@@ -371,12 +371,12 @@ None
 void setCursor(uint32_t x, uint32_t y)
 ```
 
-### Features
+### Summary
 
-Set the position of the internal cursor held by the renderer.
+Set the position of the internal cursor held by the renderer.  
 It is used when drawing with the `printf` function.
 
-### Args
+### Arguments
 
 | Type     | Name | Description         |
 | -------- | :--: | ------------------- |
@@ -393,11 +393,11 @@ None
 uint32_t getCursorX()
 ```
 
-### Features
+### Summary
 
 Get the X coordinate of the internal cursor held by the renderer.
 
-### Args
+### Arguments
 
 None
 
@@ -413,11 +413,11 @@ None
 uint32_t getCursorY()
 ```
 
-### Features
+### Summary
 
 Get the Y coordinate of the internal cursor held by the renderer.
 
-### Args
+### Arguments
 
 None
 
@@ -433,12 +433,12 @@ None
 void seekCursor(int32_t delta_x, int32_t delta_y)
 ```
 
-### Features
+### Summary
 
 Shifts the position of the internal cursor held by the renderer by the specified amount.  
 This is useful for making fine adjustments.
 
-### Args
+### Arguments
 
 | Type     |  Name   | Description          |
 | -------- | :-----: | -------------------- |
@@ -459,12 +459,12 @@ None
 void setFontColor(uint16_t font_color)
 ```
 
-### Features
+### Summary
 
-Set the font color to be retained by the renderer.
+Set the font color to be retained by the renderer.  
 It is used when drawing with the `printf` function.
 
-### Args
+### Arguments
 
 | Type     |    Name    | Description                      |
 | -------- | :--------: | -------------------------------- |
@@ -480,12 +480,12 @@ None
 void setFontColor(uint16_t font_color, uint16_t font_bgcolor)
 ```
 
-### Features
+### Summary
 
-Set the font color and background color to be retained by the renderer.
+Set the font color and background color to be retained by the renderer.  
 It is used when drawing with the `printf` function.
 
-### Args
+### Arguments
 
 | Type     |     Name     | Description                                 |
 | -------- | :----------: | ------------------------------------------- |
@@ -502,12 +502,12 @@ None
 void setFontColor(uint8_t r, uint8_t g, uint8_t b)
 ```
 
-### Features
+### Summary
 
-Set the font color to be retained by the renderer.
+Set the font color to be retained by the renderer.  
 It is used when drawing with the `printf` function.
 
-### Args
+### Arguments
 
 | Type    | Name | Description       |
 | ------- | :--: | ----------------- |
@@ -530,12 +530,12 @@ void setFontColor(uint8_t fr,
                   uint8_t bb)
 ```
 
-### Features
+### Summary
 
 Set the font color and background color to be retained by the renderer.
 It is used when drawing with the `printf` function.
 
-### Args
+### Arguments
 
 | Type    | Name | Description                      |
 | ------- | :--: | -------------------------------- |
@@ -556,11 +556,11 @@ None
 uint16_t getFontColor()
 ```
 
-### Features
+### Summary
 
 Get the font color to be retained by the renderer.
 
-### Args
+### Arguments
 
 None
 
@@ -576,11 +576,11 @@ None
 uint16_t getBackgroundColor()
 ```
 
-### Features
+### Summary
 
 Get the background color to be retained by the renderer.
 
-### Args
+### Arguments
 
 None
 
@@ -596,12 +596,12 @@ None
 void setFontSize(size_t new_size)
 ```
 
-### Features
+### Summary
 
 Set the font size to be retained by the renderer.  
 It is used when drawing with the `printf` function.
 
-### Args
+### Arguments
 
 | Type   |   Name   | Description   |
 | ------ | :------: | ------------- |
@@ -617,11 +617,11 @@ None
 size_t getFontSize();
 ```
 
-### Features
+### Summary
 
 Get the font size to be retained by the renderer.
 
-### Args
+### Arguments
 
 None
 
@@ -641,11 +641,11 @@ None
 void showFreeTypeVersion(Print &output = Serial)
 ```
 
-### Features
+### Summary
 
 Outputs the version of the FreeType library in use.
 
-### Args
+### Arguments
 
 | Type  |  Name  | Description  |
 | ----- | :----: | ------------ |
@@ -661,11 +661,11 @@ None
 void showCredit(Print &output = Serial)
 ```
 
-### Features
+### Summary
 
 Outputs a credit notation that complies with the FTL license.
 
-### Args
+### Arguments
 
 | Type  |  Name  | Description  |
 | ----- | :----: | ------------ |
@@ -681,15 +681,15 @@ None
 void setDebugLevel(uint8_t level)
 ```
 
-### Features
+### Summary
 
 Set the level for serial output.
 
-### Args
+### Arguments
 
-| Type       | Name  | Description |
-| ---------- | :---: | ----------- |
-| 　 uint8_t | level | Debug Level |
+| Type    | Name  | Description |
+| ------- | :---: | ----------- |
+| uint8_t | level | Debug Level |
 
 ### Return
 
