@@ -3,7 +3,7 @@
 Arduino IDEを用いたマイコン用のTTFフォントレンダリング支援ライブラリです。  
 このライブラリは、SDカード内のTTFフォントファイルや、プログラムに埋め込まれたTTFフォントファイルを描画することができます。
 
-このプログラムは [M5FontRender](https://github.com/takkaO/M5FontRender) がベースとなっています.  
+このプログラムは [M5FontRender](https://github.com/takkaO/M5FontRender) がベースとなっています。  
 **どんな些細な貢献も歓迎します**
 
 ![image](https://github.com/takkaO/OpenFontRender/blob/images/image.jpg)
@@ -150,23 +150,23 @@ render.setStartWrite(my_start_write_function); // 任意
 render.setEndWrite(my_end_write_function);     // 任意
 ```
 
-より詳しい説明は[API.md](/doc/API.md)をご覧ください。
+より詳しい説明は [API.md](/doc/API.md) をご覧ください。
 
 ## FreeType のバージョンを変更する
 
-このライブラリでは、どのFreeTypeバージョンにも切り替えることができます。  
-2.4.12と2.11.0で動作することを確認しています。  
-デフォルトのバージョンは2.4.12ですが、これは最も安定して動作していたバージョンだったからです。
+このライブラリでは、どの FreeType バージョンにも切り替えることができます。  
+2.4.12 と 2.11.0 で動作することを確認しています。  
+デフォルトのバージョンは 2.4.12 ですが、これは最も安定して動作していたバージョンだったからです。
 
 ### 変更方法
 
-1. お好きなFreeTypeのバージョンをダウンロードしてください。
+1. お好きな FreeType のバージョンをダウンロードしてください。
 2. ダウンロードした FreeType フォルダを OpenFontRender の直下に置きます。
 3. ```AutoRun``` スクリプトを実行します。
 
 ### 備考
 
-FreeRTOSを使用している場合、バージョンによっては不安定になることがあります。  
+FreeRTOS を使用している場合、バージョンによっては不安定になることがあります。  
 スタックサイズを大きくしたり、```useRenderTask``` を有効にしないと動作しない場合があります。
 
 ## 動作検証
@@ -193,18 +193,18 @@ FreeRTOSを使用している場合、バージョンによっては不安定に
 
 ## ライセンス
 
-このライブラリはFTLライセンスで提供されています。  
-これは、クレジット条項を持つBSDスタイルのライセンスです。  
+このライブラリは FTL ライセンスで提供されています。  
+これは、クレジット条項を持つ BSD スタイルのライセンスです。  
 本ライブラリを使用して作成されたプログラムやバイナリには，必ずクレジットを記載しなければなりません（本READMEの下部に記載されているようなものです）。
 
 ただし，FreeType に関係の無いいくつかのファイルは，MIT ライセンスのもとで使用することができます（各ファイルを参照）．
 
-FTLライセンスの詳細については，このリポジトリの[doc/FTL.TXT](/doc/FTL.TXT)または[FreeType Licenses](https://www.freetype.org/license.html)を参照してください．
+FTL ライセンスの詳細については，このリポジトリの [doc/FTL.TXT](/doc/FTL.TXT) または [FreeType Licenses](https://www.freetype.org/license.html) を参照してください．
 
 ### サンプルフォント
 
 サンプルプログラムには、以下のフォントファイルを使用しています。  
-これらの素晴らしいフォントを使いやすいライセンスで提供してくださったsozai-font-hakoさんに感謝いたします。
+これらの素晴らしいフォントを使いやすいライセンスで提供してくださった sozai-font-hako さんに感謝いたします。
 
 | Font | Copyright | 
 | --- | --- | 
