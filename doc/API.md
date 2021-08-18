@@ -49,6 +49,11 @@ Load font data from external storage (SD card).
 | -------- | ---------------------------------- |
 | FT_Error | FreeType error code. 0 is success. |
 
+### Note
+
+**SD card access is strongly hardware dependent, so for hardware other than M5Stack and Wio Terminal, you will need to add file manipulation functions to FileSupport.cpp/.h.**  
+Any better solutions are welcome.
+
 ---
 
 ```c++
