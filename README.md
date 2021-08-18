@@ -201,6 +201,15 @@ However, some files that are not related to FreeType can be used under the MIT l
 
 For more information about FTL licenses, see `doc/FTL.TXT` in this repository or [FreeType Licenses](https://www.freetype.org/license.html).
 
+### Sample font
+
+We have used below font file for the sample program.  
+We would like to thank sozai-font-hako for providing us with an easy-to-use license for these wonderful fonts.
+
+| Font | Copyright | 
+| --- | --- | 
+|[JK Gothic M](http://font.cutegirl.jp/jk-font-medium.html#i)|Copyright  (c) 2014 M+ FONTS PROJECT <br> Copyright  (c) 2015 JK FONTS|
+
 ## Reference
 
 ### FreeType
