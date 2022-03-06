@@ -12,7 +12,7 @@
 
 #if defined(ARDUINO_WIO_TERMINAL) || defined(ENABLE_M5STACK)
 
-fileclass_t fileclass;
+std::list<fileclass_t> f_list;
 fs::FS &fontFS = SD;
 
 void ffsupport_setffs(fs::FS &ffs) {
@@ -20,6 +20,7 @@ void ffsupport_setffs(fs::FS &ffs) {
 }
 
 fileclass_t *ffsupport_fopen(const char *Filename, const char *mode) {
+	fileclass_t fileclass;
 #if defined(ARDUINO_WIO_TERMINAL)
 	// For WioTerminal
 	if (strcmp(mode, "r") == 0) {
@@ -45,7 +46,9 @@ fileclass_t *ffsupport_fopen(const char *Filename, const char *mode) {
 	// For M5Stack and others
 	fileclass._fstream = fontFS.open(Filename, mode);
 #endif
-	return &fileclass;
+
+	f_list.push_back(fileclass);
+	return &f_list.back();
 }
 
 void ffsupport_fclose(fileclass_t *stream) {

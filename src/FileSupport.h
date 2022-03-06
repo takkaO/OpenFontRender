@@ -11,6 +11,8 @@
 #ifndef FILE_SUPPORT_H
 #define FILE_SUPPORT_H
 
+#include <list>
+
 #if defined(ARDUINO_M5Stack_Core_ESP32) || defined(ARDUINO_M5STACK_FIRE) || defined(ARDUINO_M5STACK_Core2)
 #define ENABLE_M5STACK
 #endif
