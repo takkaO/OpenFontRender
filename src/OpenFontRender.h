@@ -20,12 +20,14 @@
 #include FT_FREETYPE_H
 
 #undef min
+#include <deque>
 #include <functional>
 #define setDrawPixel(F) set_drawPixel([&](int32_t x, int32_t y, uint16_t c) { return F(x, y, c); })
 #define setStartWrite(F) set_startWrite([&](void) { return F(); })
 #define setEndWrite(F) set_endWrite([&](void) { return F(); })
 
 #include "FileSupport.h"
+#include "BoundingBox.h"
 
 enum OFR_DEBUG_LEVEL {
 	OFR_NONE  = 0,
@@ -53,11 +55,11 @@ public:
 	void setFontColor(uint16_t font_color, uint16_t font_bgcolor);
 	void setFontColor(uint8_t r, uint8_t g, uint8_t b);
 	void setFontColor(uint8_t fr,
-	                  uint8_t fg, 
-					  uint8_t fb, 
-					  uint8_t br, 
-					  uint8_t bg, 
-					  uint8_t bb);
+	                  uint8_t fg,
+	                  uint8_t fb,
+	                  uint8_t br,
+	                  uint8_t bg,
+	                  uint8_t bb);
 	uint16_t getFontColor();
 	uint16_t getBackgroundColor();
 	void setFontSize(size_t new_size);
@@ -67,11 +69,18 @@ public:
 	FT_Error loadFont(const char *fpath);
 	void unloadFont();
 	FT_Error drawChar(uint16_t unicode,
-	                  uint32_t x  = 0,
-	                  uint32_t y  = 0,
-	                  uint16_t fg = 0xFFFF,
-	                  uint16_t bg = 0x0000);
+	                  uint32_t x           = 0,
+	                  uint32_t y           = 0,
+	                  uint16_t fg          = 0xFFFF,
+	                  uint16_t bg          = 0x0000,
+	                  bool right_direction = false,
+	                  bool no_draw         = false);
 	uint16_t drawString(const char *str,
+	                    uint32_t x  = 0,
+	                    uint32_t y  = 0,
+	                    uint16_t fg = 0xFFFF,
+	                    uint16_t bg = 0x0000);
+	uint16_t rdrawString(const char *str,
 	                    uint32_t x  = 0,
 	                    uint32_t y  = 0,
 	                    uint16_t fg = 0xFFFF,
@@ -81,9 +90,17 @@ public:
 	                    uint32_t y,
 	                    uint16_t fg,
 	                    uint16_t bg,
+						bool right_direction,
+						bool no_draw,
 	                    FT_Error *error);
 
 	uint16_t printf(const char *fmt, ...);
+	uint16_t rprintf(const char *fmt, ...);
+
+	BoundingBox calculateBoundingBoxFmt(uint32_t x, uint32_t y, size_t font_size, bool right_direction, const char *fmt, ...);
+	BoundingBox calculateBoundingBox(uint32_t x, uint32_t y, size_t font_size, bool right_direction, const char *str);
+	size_t calculateFitFontSizeFmt(uint32_t limit_width, uint32_t limit_height, const char *fmt, ...);
+	size_t calculateFitFontSize(uint32_t limit_width, uint32_t limit_height, const char *str);
 
 	void showFreeTypeVersion(Print &output = Serial);
 	void showCredit(Print &output = Serial);
