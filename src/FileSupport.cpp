@@ -12,6 +12,7 @@
 
 #if defined(ARDUINO_WIO_TERMINAL) || defined(ENABLE_M5STACK)
 
+std::list<fileclass_t> f_list;
 fs::FS &fontFS = SD;
 
 void ffsupport_setffs(fs::FS &ffs) {
