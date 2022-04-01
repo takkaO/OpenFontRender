@@ -269,7 +269,7 @@ void OpenFontRender::unloadFont() {
 	g_NeedInitialize = true;
 }
 
-FT_Error OpenFontRender::drawChar(uint16_t unicode, uint32_t x, uint32_t y, uint16_t fg, uint16_t bg) {
+FT_Error OpenFontRender::drawChar(uint16_t unicode, uint32_t x, uint32_t y, uint16_t fg, uint16_t bg, bool right_direction, bool no_draw) {
 	FT_Face face;
 	FT_Error error;
 	FTC_SBit _sbit;
@@ -352,11 +352,16 @@ FT_Error OpenFontRender::drawChar(uint16_t unicode, uint32_t x, uint32_t y, uint
 #endif
 
 	// Set the drawing coordinate of the character to the upper left.
-	y += (face->bbox.yMax - face->bbox.yMin) * _font.size / face->units_per_EM;
+	y += ((face->bbox.yMax - face->bbox.yMin + (face->size->metrics.descender >> 6)) * _font.size / face->units_per_EM);
+	if (right_direction) {
+		x = x - _sbit->xadvance;
+	}
 
-	draw2screen(_sbit, x, y, fg, bg);
-	_cursor.x += _sbit->xadvance; // Seek cursor
-	_cursor.y += _sbit->yadvance; // Seek cursor
+	if (!no_draw) {
+		draw2screen(_sbit, x, y, fg, bg);
+	}
+	_cursor.x = (right_direction ? _cursor.x - _sbit->xadvance : _cursor.x + _sbit->xadvance); // Seek cursor
+	_cursor.y += _sbit->yadvance;                                                              // Seek cursor
 
 #ifdef FREERTOS_CONFIG_H
 	g_RenderTaskStatus = IDLE;
@@ -367,14 +372,21 @@ FT_Error OpenFontRender::drawChar(uint16_t unicode, uint32_t x, uint32_t y, uint
 
 uint16_t OpenFontRender::drawString(const char *str, uint32_t x, uint32_t y, uint16_t fg, uint16_t bg) {
 	FT_Error error;
-	return drawString(str, x, y, fg, bg, &error);
+	return drawString(str, x, y, fg, bg, false, false, &error);
 }
 
-uint16_t OpenFontRender::drawString(const char *str, uint32_t x, uint32_t y, uint16_t fg, uint16_t bg, FT_Error *error) {
-	uint16_t len            = strlen(str);
+uint16_t OpenFontRender::rdrawString(const char *str, uint32_t x, uint32_t y, uint16_t fg, uint16_t bg) {
+	FT_Error error;
+	return drawString(str, x, y, fg, bg, true, false, &error);
+}
+
+uint16_t OpenFontRender::drawString(const char *str, uint32_t x, uint32_t y, uint16_t fg, uint16_t bg, bool right_direction, bool no_draw, FT_Error *error) {
+	uint16_t len = strlen(str);
+	;
 	uint16_t n              = 0;
 	uint16_t wrote_char_num = 0;
 	uint32_t max_height;
+	std::deque<uint16_t> unicode_q;
 	_cursor = {x, y};
 
 	{
@@ -383,30 +395,42 @@ uint16_t OpenFontRender::drawString(const char *str, uint32_t x, uint32_t y, uin
 		if (*error) {
 			return wrote_char_num;
 		}
-		max_height = (face->bbox.yMax - face->bbox.yMin) * _font.size / face->units_per_EM;
+		max_height = (face->height) * _font.size / face->units_per_EM;
 	}
 
 	while (n < len) {
 		uint16_t unicode = decodeUTF8((uint8_t *)str, &n, len - n);
+		if (right_direction) {
+			unicode_q.push_front(unicode);
+		} else {
+			unicode_q.push_back(unicode);
+		}
+	}
 
+	while (!unicode_q.empty()) {
+		uint16_t unicode = unicode_q.front();
 		if (unicode == '\r') {
 			_cursor.x = 0;
 			wrote_char_num++;
+			unicode_q.pop_front();
 			continue;
 		}
 		if (unicode == '\n') {
 			_cursor.x = 0;
 			_cursor.y += max_height;
 			wrote_char_num++;
+			unicode_q.pop_front();
 			continue;
 		}
 
-		*error = drawChar(unicode, _cursor.x, _cursor.y, fg, bg);
+		*error = drawChar(unicode, _cursor.x, _cursor.y, fg, bg, right_direction, no_draw);
 		if (*error) {
 			return wrote_char_num;
 		}
 		wrote_char_num++;
+		unicode_q.pop_front();
 	}
+
 	return wrote_char_num;
 }
 
@@ -419,6 +443,112 @@ uint16_t OpenFontRender::printf(const char *fmt, ...) {
 	va_end(ap);
 
 	return drawString(str, _cursor.x, _cursor.y, _font.fg_color, _font.bg_color);
+}
+
+uint16_t OpenFontRender::rprintf(const char *fmt, ...) {
+	char str[256] = {0};
+	va_list ap;
+
+	va_start(ap, fmt);
+	vsnprintf(str, 256, fmt, ap);
+	va_end(ap);
+
+	return rdrawString(str, _cursor.x, _cursor.y, _font.fg_color, _font.bg_color);
+}
+
+BoundingBox OpenFontRender::calculateBoundingBoxFmt(uint32_t x, uint32_t y, size_t font_size, bool right_direction, const char *fmt, ...) {
+	char str[256] = {0};
+	va_list ap;
+
+	va_start(ap, fmt);
+	vsnprintf(str, 256, fmt, ap);
+	va_end(ap);
+
+	return calculateBoundingBox(x, y, font_size, right_direction, (const char *)str);
+}
+
+BoundingBox OpenFontRender::calculateBoundingBox(uint32_t x, uint32_t y, size_t font_size, bool right_direction, const char *str) {
+	FT_Error error;
+	size_t tmp_font_size = getFontSize();
+	Cursor tmp_cursor    = _cursor;
+	uint32_t max_height  = 0;
+	uint32_t y_offset    = 0;
+	BoundingBox bbox;
+
+	setFontSize(font_size);
+	drawString(str, x, y, 0xFFFF, 0x0000, right_direction, true, &error);
+
+	{
+		FT_Face face;
+		error = FTC_Manager_LookupFace(_ftc_manager, (FTC_FaceID)_face_id, &face);
+		if (error) {
+			return bbox;
+		}
+		// Calculation not accurate
+		// max_height = (face->bbox.yMax - face->bbox.yMin) * _font.size / face->units_per_EM;
+		max_height = (face->height) * _font.size / face->units_per_EM;
+		y_offset   = face->bbox.yMin * _font.size / face->units_per_EM;
+	}
+
+	bbox.setBoundingBoxWithCoordinates(x, y - y_offset, _cursor.x, _cursor.y + max_height);
+	setFontSize(tmp_font_size);
+	_cursor = tmp_cursor;
+
+	return bbox;
+}
+
+size_t OpenFontRender::calculateFitFontSizeFmt(uint32_t limit_width, uint32_t limit_height, const char *fmt, ...) {
+	char str[256] = {0};
+	va_list ap;
+
+	va_start(ap, fmt);
+	vsnprintf(str, 256, fmt, ap);
+	va_end(ap);
+
+	return calculateFitFontSize(limit_width, limit_height, (const char *)str);
+}
+
+size_t OpenFontRender::calculateFitFontSize(uint32_t limit_width, uint32_t limit_height, const char *str) {
+	FT_Error error;
+	size_t tmp_font_size = getFontSize();
+	Cursor tmp_cursor    = _cursor;
+	size_t fs1           = 10;
+	size_t fs2           = 40;
+
+	setFontSize(fs1);
+	drawString(str, 0, 0, 0xFFFF, 0x0000, false, true, &error);
+	int32_t x1 = _cursor.x;
+
+	setFontSize(fs2);
+	drawString(str, 0, 0, 0xFFFF, 0x0000, false, true, &error);
+	int32_t x2 = _cursor.x;
+
+	int32_t y1, y2;
+	{
+		FT_Face face;
+		error = FTC_Manager_LookupFace(_ftc_manager, (FTC_FaceID)_face_id, &face);
+		if (error) {
+			return 0;
+		}
+		// Calculation not accurate
+		// max_height = (face->bbox.yMax - face->bbox.yMin) * _font.size / face->units_per_EM;
+		y1 = (face->height) * fs1 / face->units_per_EM;
+		y2 = (face->height) * fs2 / face->units_per_EM;
+	}
+
+	double a1 = (double)(x2 - x1) / (double)((int32_t)fs2 - (int32_t)fs1);
+	double b1 = (double)((int32_t)fs2 * x1 - ((int32_t)fs1 * x2)) / (double)((int32_t)fs2 - (int32_t)fs1);
+
+	double a2 = (double)(y2 - y1) / (double)((int32_t)fs2 - (int32_t)fs1);
+	double b2 = (double)((int32_t)fs2 * y1 - (int32_t)fs1 * y2) / (double)((int32_t)fs2 - (int32_t)fs1);
+
+	size_t wfs = (size_t)std::floor((limit_width - b1) / (a1 + 0.00001));
+	size_t hfs = (size_t)std::floor((limit_height - b2) / (a2 + 0.00001));
+
+	setFontSize(tmp_font_size);
+	_cursor = tmp_cursor;
+
+	return std::min(wfs, hfs);
 }
 
 void OpenFontRender::showFreeTypeVersion(Print &output) {
@@ -523,8 +653,8 @@ uint16_t OpenFontRender::alphaBlend(uint8_t alpha, uint16_t fgc, uint16_t bgc) {
 	uint16_t b = (((fgB * alpha) + (bgB * (255 - alpha))) >> 9);
 
 	// Combine RGB565 colours into 16 bits
-	//return ((r&0x18) << 11) | ((g&0x30) << 5) | ((b&0x18) << 0); // 2 bit greyscale
-	//return ((r&0x1E) << 11) | ((g&0x3C) << 5) | ((b&0x1E) << 0); // 4 bit greyscale
+	// return ((r&0x18) << 11) | ((g&0x30) << 5) | ((b&0x18) << 0); // 2 bit greyscale
+	// return ((r&0x1E) << 11) | ((g&0x3C) << 5) | ((b&0x1E) << 0); // 4 bit greyscale
 	return (r << 11) | (g << 5) | (b << 0);
 }
 
