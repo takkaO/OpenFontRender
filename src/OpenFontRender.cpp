@@ -381,13 +381,13 @@ uint16_t OpenFontRender::rdrawString(const char *str, uint32_t x, uint32_t y, ui
 }
 
 uint16_t OpenFontRender::drawString(const char *str, uint32_t x, uint32_t y, uint16_t fg, uint16_t bg, bool right_direction, bool no_draw, FT_Error *error) {
-	uint16_t len = strlen(str);
-	;
+	uint16_t len            = strlen(str);
 	uint16_t n              = 0;
 	uint16_t wrote_char_num = 0;
 	uint32_t max_height;
 	std::deque<uint16_t> unicode_q;
-	_cursor = {x, y};
+	uint16_t q_count = 0;
+	_cursor          = {x, y};
 
 	{
 		FT_Face face;
@@ -405,20 +405,19 @@ uint16_t OpenFontRender::drawString(const char *str, uint32_t x, uint32_t y, uin
 		} else {
 			unicode_q.push_back(unicode);
 		}
+		q_count++;
 	}
 
-	while (!unicode_q.empty()) {
+	for (wrote_char_num = 0; wrote_char_num < q_count; wrote_char_num++) {
 		uint16_t unicode = unicode_q.front();
 		if (unicode == '\r') {
 			_cursor.x = 0;
-			wrote_char_num++;
 			unicode_q.pop_front();
 			continue;
 		}
 		if (unicode == '\n') {
 			_cursor.x = 0;
 			_cursor.y += max_height;
-			wrote_char_num++;
 			unicode_q.pop_front();
 			continue;
 		}
@@ -427,7 +426,6 @@ uint16_t OpenFontRender::drawString(const char *str, uint32_t x, uint32_t y, uin
 		if (*error) {
 			return wrote_char_num;
 		}
-		wrote_char_num++;
 		unicode_q.pop_front();
 	}
 
