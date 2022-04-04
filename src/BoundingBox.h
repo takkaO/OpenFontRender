@@ -12,6 +12,7 @@
 #define BOUNDING_BOX_H
 
 #include <utility>
+#include <cstdint>
 
 class BoundingBox {
 public:
