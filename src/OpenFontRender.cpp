@@ -107,6 +107,10 @@ OpenFontRender::OpenFontRender() {
 	_startWrite = []() { return; };
 	_endWrite   = []() { return; };
 
+	_max_faces = OFR_CACHE_SIZE_NO_LIMIT;
+	_max_sizes = OFR_CACHE_SIZE_NO_LIMIT;
+	_max_bytes = OFR_CACHE_SIZE_NO_LIMIT;
+
 	_font.size     = 44;     // Set default font size
 	_font.fg_color = 0xFFFF; // Set default font color (White)
 	_font.bg_color = 0x0000; // Set default background color (Black)
@@ -176,6 +180,12 @@ size_t OpenFontRender::getFontSize() {
 	return _font.size;
 }
 
+void OpenFontRender::setCacheSize(unsigned int max_faces, unsigned int max_sizes, unsigned long max_bytes) {
+	_max_faces = max_faces;
+	_max_sizes = max_sizes;
+	_max_bytes = max_bytes;
+}
+
 FT_Error OpenFontRender::loadFont(const unsigned char *data, size_t size) {
 	FT_Face face;
 	FT_Error error;
@@ -192,7 +202,7 @@ FT_Error OpenFontRender::loadFont(const unsigned char *data, size_t size) {
 
 	_face_id = g_AvailableFaceId++;
 	// 現在の引数は適当
-	error = FTC_Manager_New(g_FtLibrary, 0, 0, 0, &ftc_face_requester, &info, &_ftc_manager);
+	error = FTC_Manager_New(g_FtLibrary, _max_faces, _max_sizes, _max_bytes, &ftc_face_requester, &info, &_ftc_manager);
 	if (error) {
 		debugPrintf((_debug_level & OFR_ERROR), "FTC_Manager_New error: 0x%02X\n", error);
 		return error;
@@ -203,7 +213,7 @@ FT_Error OpenFontRender::loadFont(const unsigned char *data, size_t size) {
 		debugPrintf((_debug_level & OFR_ERROR), "FTC_Manager_LookupFace error: 0x%02X\n", error);
 		return error;
 	}
-
+	
 	error = FTC_CMapCache_New(_ftc_manager, &_ftc_cmap_cache);
 	if (error) {
 		debugPrintf((_debug_level & OFR_ERROR), "FTC_CMapCache_New error: 0x%02X\n", error);
@@ -235,7 +245,7 @@ FT_Error OpenFontRender::loadFont(const char *fpath) {
 
 	_face_id = g_AvailableFaceId++;
 	// 現在の引数は適当
-	error = FTC_Manager_New(g_FtLibrary, 0, 0, 0, &ftc_face_requester, &info, &_ftc_manager);
+	error = FTC_Manager_New(g_FtLibrary, _max_faces, _max_sizes, _max_bytes, &ftc_face_requester, &info, &_ftc_manager);
 	if (error) {
 		debugPrintf((_debug_level & OFR_ERROR), "FTC_Manager_New error: 0x%02X\n", error);
 		return error;

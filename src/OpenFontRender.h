@@ -25,6 +25,7 @@
 #define setDrawPixel(F) set_drawPixel([&](int32_t x, int32_t y, uint16_t c) { return F(x, y, c); })
 #define setStartWrite(F) set_startWrite([&](void) { return F(); })
 #define setEndWrite(F) set_endWrite([&](void) { return F(); })
+#define OFR_CACHE_SIZE_NO_LIMIT 0
 
 #include "FileSupport.h"
 #include "BoundingBox.h"
@@ -64,6 +65,7 @@ public:
 	uint16_t getBackgroundColor();
 	void setFontSize(size_t new_size);
 	size_t getFontSize();
+	void setCacheSize(unsigned int max_faces, unsigned int max_sizes, unsigned long max_bytes);
 
 	FT_Error loadFont(const unsigned char *data, size_t size);
 	FT_Error loadFont(const char *fpath);
@@ -132,6 +134,9 @@ private:
 	FTC_CMapCache _ftc_cmap_cache;
 	FTC_SBitCache _ftc_sbit_cache;
 	uint8_t _face_id;
+	unsigned int _max_faces;
+	unsigned int _max_sizes;
+	unsigned long _max_bytes;
 
 	enum RenderMode _render_mode;
 	struct FontParameter {
