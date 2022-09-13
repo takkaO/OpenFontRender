@@ -20,18 +20,21 @@
 #include FT_FREETYPE_H
 
 #undef min
-#include <vector>
+#include <functional>
 #include <queue>
 #include <string>
-#include <functional>
-#define setDrawPixel(F) set_drawPixel([&](int32_t x, int32_t y, uint16_t c) { return F(x, y, c); })
-#define setStartWrite(F) set_startWrite([&](void) { return F(); })
-#define setEndWrite(F) set_endWrite([&](void) { return F(); })
+#include <vector>
+
+#include "FileSupport.h"
+
+/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
+//
+//  Constant definition
+//
+/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 #define OFR_CACHE_SIZE_NO_LIMIT 0
 #define OFR_FT_VERSION_STRING_SIZE (32)
 #define OFR_CREDIT_STRING_SIZE (128)
-
-#include "FileSupport.h"
 
 enum OFR_DEBUG_LEVEL {
 	OFR_NONE  = 0,
@@ -39,11 +42,6 @@ enum OFR_DEBUG_LEVEL {
 	OFR_INFO  = 2,
 	OFR_DEBUG = 4,
 	OFR_RAW   = 8,
-};
-
-enum RenderMode {
-	NORMAL,
-	WITH_CACHE
 };
 
 enum class Align {
@@ -62,16 +60,34 @@ enum class Drawing {
 	Skip
 };
 
-typedef struct {
-	FT_Glyph glyph;
-	FT_Vector pos;
-}RenderStringInfo;
+/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
+//
+//  Output function definition
+//
+/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
+#define setPrintFunc(F) set_printFunc([&](const char *s) { return F(s); })
+
+template <typename T>
+void setSerial(T &output) {
+	set_printFunc([&](const char *s) { return output.print(s); });
+}
+// Direct calls are deprecated.
+void set_printFunc(std::function<void(const char *)> user_func);
+
+/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
+//
+//  Class definition
+//
+/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
+#define setDrawPixel(F) set_drawPixel([&](int32_t x, int32_t y, uint16_t c) { return F(x, y, c); })
+#define setStartWrite(F) set_startWrite([&](void) { return F(); })
+#define setEndWrite(F) set_endWrite([&](void) { return F(); })
 
 class OpenFontRender {
 public:
 	OpenFontRender();
 	void setUseRenderTask(bool enable);
-	void setRenderTaskMode(enum RenderMode mode);
+	void setRenderTaskStackSize(unsigned int stack_size);
 	void setCursor(int32_t x, int32_t y);
 	int32_t getCursorX();
 	int32_t getCursorY();
@@ -99,39 +115,39 @@ public:
 	void unloadFont();
 
 	uint16_t drawHString(const char *str,
-		                 int32_t x,
-						int32_t y,
-						uint16_t fg,
-						uint16_t bg,
-						Align align,
-	                    Drawing drawing,
-	                    FT_BBox &abbox,
-						FT_Error &error);
+	                     int32_t x,
+	                     int32_t y,
+	                     uint16_t fg,
+	                     uint16_t bg,
+	                     Align align,
+	                     Drawing drawing,
+	                     FT_BBox &abbox,
+	                     FT_Error &error);
 	FT_Error drawChar(char character,
-	                  int32_t x           = 0,
-	                  int32_t y           = 0,
-	                  uint16_t fg          = 0xFFFF,
-	                  uint16_t bg          = 0x0000,
-						Align align=Align::Left);
+	                  int32_t x   = 0,
+	                  int32_t y   = 0,
+	                  uint16_t fg = 0xFFFF,
+	                  uint16_t bg = 0x0000,
+	                  Align align = Align::Left);
 	uint16_t drawString(const char *str,
-	                    int32_t x  = 0,
-	                    int32_t y  = 0,
-	                    uint16_t fg = 0xFFFF,
-	                    uint16_t bg = 0x0000,
-						Layout layout = Layout::Horizontal);
+	                    int32_t x     = 0,
+	                    int32_t y     = 0,
+	                    uint16_t fg   = 0xFFFF,
+	                    uint16_t bg   = 0x0000,
+	                    Layout layout = Layout::Horizontal);
 	uint16_t cdrawString(const char *str,
-	                     int32_t x   = 0,
-	                     int32_t y   = 0,
-	                     uint16_t fg = 0xFFFF,
-	                     uint16_t bg = 0x0000,
+	                     int32_t x     = 0,
+	                     int32_t y     = 0,
+	                     uint16_t fg   = 0xFFFF,
+	                     uint16_t bg   = 0x0000,
 	                     Layout layout = Layout::Horizontal);
 	uint16_t rdrawString(const char *str,
-	                    int32_t x  = 0,
-	                    int32_t y  = 0,
-	                    uint16_t fg = 0xFFFF,
-	                    uint16_t bg = 0x0000,
+	                     int32_t x     = 0,
+	                     int32_t y     = 0,
+	                     uint16_t fg   = 0xFFFF,
+	                     uint16_t bg   = 0x0000,
 	                     Layout layout = Layout::Horizontal);
-	
+
 	uint16_t printf(const char *fmt, ...);
 	uint16_t cprintf(const char *fmt, ...);
 	uint16_t rprintf(const char *fmt, ...);
@@ -141,6 +157,8 @@ public:
 	unsigned int calculateFitFontSizeFmt(uint32_t limit_width, uint32_t limit_height, Layout layout, const char *fmt, ...);
 	unsigned int calculateFitFontSize(uint32_t limit_width, uint32_t limit_height, Layout layout, const char *str);
 
+	void showFreeTypeVersion();
+	void showCredit();
 	void getFreeTypeVersion(char *str);
 	void getCredit(char *str);
 	void setDebugLevel(uint8_t level);
@@ -176,7 +194,6 @@ private:
 	unsigned int _max_sizes;
 	unsigned long _max_bytes;
 
-	enum RenderMode _render_mode;
 	struct FontParameter {
 		double line_space_ratio;
 		unsigned int size;

@@ -30,6 +30,11 @@ typedef struct {
 	uint8_t debug_level;    // debug level
 } FontDataInfo;
 
+typedef struct {
+	FT_Glyph glyph;
+	FT_Vector pos;
+} RenderStringInfo;
+
 #ifdef FREERTOS_CONFIG_H
 enum RenderTaskStatus {
 	IDLE,
@@ -40,15 +45,9 @@ enum RenderTaskStatus {
 };
 
 typedef struct {
-	enum RenderMode mode;          // Rendering mode
-	FTC_Manager *ftc_manager;      // ftc_manager obj
-	FTC_ImageCache *ftc_image_cache; // ftc_image_cache obj
-	uint8_t face_id;               // face id
-	size_t font_size;              // font size
-	FT_UInt glyph_index;           // glyph index
-	FT_Glyph *aglyph;			   // result
-	FT_Error error;                // ft_error
-	uint8_t debug_level;           // debug level
+	FT_Glyph image;      // result
+	FT_Error error;      // ft_error
+	uint8_t debug_level; // debug level
 } RenderTaskParameter;
 #endif
 
@@ -63,7 +62,6 @@ FT_Error ftc_face_requester(FTC_FaceID face_id,
                             FT_Library library,
                             FT_Pointer request_data,
                             FT_Face *face);
-
 void debugPrintf(uint8_t level, const char *fmt, ...);
 
 #ifdef FREERTOS_CONFIG_H
@@ -85,8 +83,11 @@ bool g_NeedInitialize     = true;
 TaskHandle_t g_RenderTaskHandle                   = NULL;
 volatile enum RenderTaskStatus g_RenderTaskStatus = IDLE;
 volatile bool g_UseRenderTask                     = (FREETYPE_MAJOR == 2 && FREETYPE_MINOR == 4 && FREETYPE_PATCH == 12) ? false : true;
+unsigned int g_RenderTaskStackSize                = 8192 + 8192 + 4096;
 RenderTaskParameter g_TaskParameter;
 #endif
+
+std::function<void(const char *)> g_Print;
 
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 //
@@ -95,11 +96,19 @@ RenderTaskParameter g_TaskParameter;
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 
 OpenFontRender::OpenFontRender() {
+	g_Print = [](const char *s) {
+#ifdef ARDUINO_BOARD
+		Serial.print(s);
+#else
+		return;
+#endif
+	};
+
 	// TODO: Automatic support some micro computers
 	_drawPixel = [](int x, int y, int c) {
 		static bool flag = true;
 		if (flag) {
-			Serial.println("** [Warning] Please set drawPixel() using setDrawPixel(). **");
+			g_Print("\n** [Warning] Please set drawPixel() using setDrawPixel(). **\n");
 			flag = false;
 		}
 		return;
@@ -111,14 +120,12 @@ OpenFontRender::OpenFontRender() {
 	_max_sizes = OFR_CACHE_SIZE_NO_LIMIT;
 	_max_bytes = OFR_CACHE_SIZE_NO_LIMIT;
 
-	_font.line_space_ratio = 1.0; // Set default line space ratio
-	_font.size     = 44;     // Set default font size
-	_font.fg_color = 0xFFFF; // Set default font color (White)
-	_font.bg_color = 0x0000; // Set default background color (Black)
+	_font.line_space_ratio = 1.0;    // Set default line space ratio
+	_font.size             = 44;     // Set default font size
+	_font.fg_color         = 0xFFFF; // Set default font color (White)
+	_font.bg_color         = 0x0000; // Set default background color (Black)
 	_font.support_vertical = false;
-	_debug_level   = OFR_NONE;
-
-	_render_mode     = NORMAL;
+	_debug_level           = OFR_NONE;
 }
 
 void OpenFontRender::setUseRenderTask(bool enable) {
@@ -127,8 +134,10 @@ void OpenFontRender::setUseRenderTask(bool enable) {
 #endif
 }
 
-void OpenFontRender::setRenderTaskMode(enum RenderMode mode) {
-	_render_mode = mode;
+void OpenFontRender::setRenderTaskStackSize(unsigned int stack_size) {
+#ifdef FREERTOS_CONFIG_H
+	g_RenderTaskStackSize = stack_size;
+#endif
 }
 
 void OpenFontRender::setCursor(int32_t x, int32_t y) {
@@ -320,16 +329,16 @@ uint16_t OpenFontRender::drawHString(const char *str,
                                      Align align,
                                      Drawing drawing,
                                      FT_BBox &abbox,
-									 FT_Error &error) {
-	
+                                     FT_Error &error) {
+
 	FT_Face face;
 	FT_Glyph aglyph;
-	uint16_t written_char_num = 0;
-	bool detect_control_char = false;
-	Cursor initial_position   = {x, y};
+	uint16_t written_char_num    = 0;
+	bool detect_control_char     = false;
+	Cursor initial_position      = {x, y};
 	Cursor current_line_position = {x, y};
-	FT_Vector offset = {0, 0};
-	FT_Size asize = NULL;
+	FT_Vector offset             = {0, 0};
+	FT_Size asize                = NULL;
 
 	FT_BBox bbox;
 	bbox.xMin = bbox.yMin = LONG_MAX;
@@ -369,13 +378,13 @@ uint16_t OpenFontRender::drawHString(const char *str,
 	if (error) {
 		return written_char_num;
 	}
-	face = asize->face;
+	face              = asize->face;
 	FT_Int cmap_index = FT_Get_Charmap_Index(face->charmap);
 
 	// Rendering loop
 	while (unicode_q.size() != 0) {
 		RenderStringInfo rsi;
-		detect_control_char = false;
+		detect_control_char   = false;
 		current_line_position = {x, y};
 		bbox.xMin = bbox.yMin = LONG_MAX;
 		bbox.xMax = bbox.yMax = LONG_MIN;
@@ -386,12 +395,12 @@ uint16_t OpenFontRender::drawHString(const char *str,
 			unicode = unicode_q.front();
 			switch (unicode) {
 			case '\r':
-				[[fallthrough]];	// Fall Through
+				[[fallthrough]]; // Fall Through
 			case '\n':
 				detect_control_char = true;
 				break;
 			default:
-				rsi.pos = {x, y};
+				rsi.pos             = {x, y};
 				FT_UInt glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache,
 				                                           (FTC_FaceID)_face_id,
 				                                           cmap_index,
@@ -478,7 +487,42 @@ uint16_t OpenFontRender::drawHString(const char *str,
 				// Change baseline to left top
 				pos.y += ((face->size->metrics.ascender) >> 6);
 
+#ifdef FREERTOS_CONFIG_H
+				if (g_UseRenderTask) {
+					if (g_RenderTaskHandle == NULL) {
+						debugPrintf((_debug_level & OFR_INFO), "Create render task\n");
+						const uint8_t RUNNING_CORE = 1;
+						const uint8_t PRIORITY     = 1;
+						xTaskCreateUniversal(RenderTask,
+						                     "RenderTask",
+						                     g_RenderTaskStackSize, // Seems to need a lot of memory.
+						                     NULL,
+						                     PRIORITY,
+						                     &g_RenderTaskHandle,
+						                     RUNNING_CORE);
+					}
+					while (g_RenderTaskStatus != IDLE) {
+						vTaskDelay(1);
+					}
+					g_RenderTaskStatus          = LOCK;
+					g_TaskParameter.image       = image;
+					g_TaskParameter.debug_level = _debug_level;
+
+					g_RenderTaskStatus = RENDERING;
+					while (g_RenderTaskStatus == RENDERING) {
+						vTaskDelay(1);
+					}
+					debugPrintf((g_TaskParameter.debug_level & OFR_INFO), "Render task Finish\n");
+					image              = g_TaskParameter.image;
+					error              = g_TaskParameter.error;
+					g_RenderTaskStatus = IDLE;
+				} else {
+					error = FT_Glyph_To_Bitmap(&image, FT_RENDER_MODE_NORMAL, NULL, false);
+				}
+#else
 				error = FT_Glyph_To_Bitmap(&image, FT_RENDER_MODE_NORMAL, NULL, false);
+#endif
+
 				if (!error) {
 					FT_BitmapGlyph bit = (FT_BitmapGlyph)image;
 
@@ -619,7 +663,6 @@ FT_BBox OpenFontRender::calculateBoundingBoxFmt(int32_t x, int32_t y, unsigned i
 	return calculateBoundingBox(x, y, font_size, align, layout, (const char *)str);
 }
 
-
 FT_BBox OpenFontRender::calculateBoundingBox(int32_t x, int32_t y, unsigned int font_size, Align align, Layout layout, const char *str) {
 	FT_Error error;
 	FT_BBox bbox;
@@ -659,11 +702,11 @@ unsigned int OpenFontRender::calculateFitFontSizeFmt(uint32_t limit_width, uint3
 
 unsigned int OpenFontRender::calculateFitFontSize(uint32_t limit_width, uint32_t limit_height, Layout layout, const char *str) {
 	FT_Error error;
-	FT_BBox bbox1 = {0, 0, 0, 0}; 
+	FT_BBox bbox1        = {0, 0, 0, 0};
 	FT_BBox bbox2        = {0, 0, 0, 0};
 	size_t tmp_font_size = getFontSize();
 	Cursor tmp_cursor    = _cursor;
-	unsigned int fs1           = 10;
+	unsigned int fs1     = 10;
 	unsigned int fs2     = 50;
 	int32_t w1, w2, h1, h2;
 
@@ -710,15 +753,27 @@ unsigned int OpenFontRender::calculateFitFontSize(uint32_t limit_width, uint32_t
 	return std::min(wfs, hfs);
 }
 
+void OpenFontRender::showFreeTypeVersion() {
+	char s[OFR_FT_VERSION_STRING_SIZE] = {0};
+	getFreeTypeVersion(s);
+	g_Print(s);
+}
+
+void OpenFontRender::showCredit() {
+	char s[OFR_CREDIT_STRING_SIZE] = {0};
+	getCredit(s);
+	g_Print(s);
+}
+
 void OpenFontRender::getFreeTypeVersion(char *str) {
 	snprintf(str, OFR_FT_VERSION_STRING_SIZE,
 	         "FreeType version: %d.%d.%d\n", FREETYPE_MAJOR, FREETYPE_MINOR, FREETYPE_PATCH);
 }
 
-void OpenFontRender::getCredit(char* str) {
+void OpenFontRender::getCredit(char *str) {
 	snprintf(str, OFR_CREDIT_STRING_SIZE,
-	         "Portions of this software are copyright (c) < %d.%d.%d > The FreeTypeProject (www.freetype.org).  All rights reserved.\n", 
-		FREETYPE_MAJOR, FREETYPE_MINOR, FREETYPE_PATCH);
+	         "Portions of this software are copyright (c) < %d.%d.%d > The FreeTypeProject (www.freetype.org).  All rights reserved.\n",
+	         FREETYPE_MAJOR, FREETYPE_MINOR, FREETYPE_PATCH);
 }
 
 void OpenFontRender::setDebugLevel(uint8_t level) {
@@ -752,8 +807,8 @@ uint32_t OpenFontRender::getFontMaxHeight() {
 	FT_Error error;
 	FT_Face face;
 	FTC_ScalerRec scaler;
-	FT_Size asize = NULL;
-	static uint32_t max_height = 0;
+	FT_Size asize                      = NULL;
+	static uint32_t max_height         = 0;
 	static unsigned int prev_font_size = 0;
 
 	if (prev_font_size == _font.size) {
@@ -767,7 +822,7 @@ uint32_t OpenFontRender::getFontMaxHeight() {
 	scaler.x_res   = 0;
 	scaler.y_res   = 0;
 
-	//error = FTC_Manager_LookupFace(_ftc_manager, (FTC_FaceID)_face_id, &face);
+	// error = FTC_Manager_LookupFace(_ftc_manager, (FTC_FaceID)_face_id, &face);
 	error = FTC_Manager_LookupSize(_ftc_manager, &scaler, &asize);
 	if (error) {
 		return 0;
@@ -866,7 +921,6 @@ FT_Error ftc_face_requester(FTC_FaceID face_id, FT_Library library, FT_Pointer r
 		} else {
 			debugPrintf((info->debug_level & OFR_INFO), "Font load Success!\n");
 		}
-		//error = FT_Set_Pixel_Sizes(*face, 30, 0);
 
 	} else if (info->from == FROM_MEMORY) {
 		debugPrintf((info->debug_level & OFR_INFO), "Load from memory.\n");
@@ -894,8 +948,8 @@ void debugPrintf(uint8_t level, const char *fmt, ...) {
 		vsnprintf(str, 256, fmt, ap);
 		va_end(ap);
 
-		Serial.print("[OFR ERROR] ");
-		Serial.print(str);
+		g_Print("[OFR ERROR] ");
+		g_Print(str);
 		return;
 	}
 	case OFR_INFO: {
@@ -903,8 +957,8 @@ void debugPrintf(uint8_t level, const char *fmt, ...) {
 		vsnprintf(str, 256, fmt, ap);
 		va_end(ap);
 
-		Serial.print("[OFR INFO] ");
-		Serial.print(str);
+		g_Print("[OFR INFO] ");
+		g_Print(str);
 		return;
 	}
 	case OFR_DEBUG: {
@@ -912,8 +966,8 @@ void debugPrintf(uint8_t level, const char *fmt, ...) {
 		vsnprintf(str, 256, fmt, ap);
 		va_end(ap);
 
-		Serial.print("[OFR DEBUG] ");
-		Serial.print(str);
+		g_Print("[OFR DEBUG] ");
+		g_Print(str);
 		return;
 	}
 	case OFR_RAW: {
@@ -921,7 +975,7 @@ void debugPrintf(uint8_t level, const char *fmt, ...) {
 		vsnprintf(str, 256, fmt, ap);
 		va_end(ap);
 
-		Serial.print(str);
+		g_Print(str);
 		return;
 	}
 	default:
@@ -931,113 +985,26 @@ void debugPrintf(uint8_t level, const char *fmt, ...) {
 
 #ifdef FREERTOS_CONFIG_H
 void RenderTask(void *pvParameters) {
-	FTC_ImageTypeRec image_type;
-	image_type.width = 0;
-	image_type.flags = FT_LOAD_RENDER;
-
 	while (g_UseRenderTask == true) {
 		if (g_RenderTaskStatus != RENDERING) {
 			vTaskDelay(1);
 			continue;
 		}
-
-		switch (g_TaskParameter.mode) {
-		case NORMAL: {
-			debugPrintf((g_TaskParameter.debug_level & OFR_INFO), "Render task start: Mode NORMAL\n");
-
-			FT_Face face;
-			FTC_SBitRec sbit;
-			FTC_ScalerRec ft_scaler;
-			FT_Size ft_size;
-			vTaskDelay(1); // Important delay to prevent stack overflow
-			g_TaskParameter.error = FTC_Manager_LookupFace(*g_TaskParameter.ftc_manager,
-			                                               (FTC_FaceID)g_TaskParameter.face_id,
-			                                               &face);
-			if (g_TaskParameter.error) {
-				debugPrintf((g_TaskParameter.debug_level & OFR_ERROR), "Render task error in LookupFace\n");
-				break;
-			}
-
-			// set scaler parameters
-			ft_scaler.face_id = (FTC_FaceID)g_TaskParameter.face_id;
-			ft_scaler.width   = 0;
-			ft_scaler.height  = g_TaskParameter.font_size;
-			ft_scaler.pixel   = true;
-			ft_scaler.x_res   = 0;
-			ft_scaler.y_res   = 0;
-			vTaskDelay(1); // Important delay to prevent stack overflow
-			g_TaskParameter.error = FTC_Manager_LookupSize(*g_TaskParameter.ftc_manager, &ft_scaler, &ft_size);
-			if (g_TaskParameter.error) {
-				debugPrintf((g_TaskParameter.debug_level & OFR_ERROR), "Render task error in LookupSize\n");
-				break;
-			}
-			face = ft_size->face;
-
-			vTaskDelay(1); // Important delay to prevent stack overflow
-			g_TaskParameter.error = FT_Load_Glyph(face, g_TaskParameter.glyph_index, FT_LOAD_DEFAULT);
-			if (g_TaskParameter.error) {
-				debugPrintf((g_TaskParameter.debug_level & OFR_ERROR), "Render task error in Load_Glyph\n");
-				break;
-			}
-
-			vTaskDelay(1); // Important delay to prevent stack overflow
-			g_TaskParameter.error = FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL);
-			if (g_TaskParameter.error) {
-				debugPrintf((g_TaskParameter.debug_level & OFR_ERROR), "Render task error in Render_Glyph\n");
-				break;
-			}
-
-			/* Copy render bitmap to sbit structure */
-			sbit = {
-			    face->glyph->bitmap.width,      // width
-			    face->glyph->bitmap.rows,       // height
-			    face->glyph->bitmap_left,       // left
-			    face->glyph->bitmap_top,        // top
-			    face->glyph->bitmap.pixel_mode, // format
-			    face->glyph->bitmap.num_grays,  // max_gray
-			    face->glyph->bitmap.pitch,      // pitch
-			    face->glyph->advance.x >> 6,    // xadvance
-			    face->glyph->advance.y >> 6,    // yadvance
-			    face->glyph->bitmap.buffer      // buffer
-			};
-
-			vTaskDelay(1); // Important delay to prevent stack overflow
-			*g_TaskParameter.sbit = &sbit;
-			vTaskDelay(1); // Important delay to prevent stack overflow
-		} break;
-		case WITH_CACHE: {
-			debugPrintf((g_TaskParameter.debug_level & OFR_INFO), "Render task start: Mode WITH_CACHE\n");
-
-			image_type.face_id = (FTC_FaceID)g_TaskParameter.face_id;
-			image_type.height  = g_TaskParameter.font_size;
-			vTaskDelay(1); // Important delay to prevent stack overflow
-			
-			if (g_TaskParameter.support_big_font) {
-				g_TaskParameter.error = FTC_ImageCache_Lookup(*g_TaskParameter.ftc_image_cache,
-				                                             &image_type,
-				                                             g_TaskParameter.glyph_index,
-				                                             g_TaskParameter.aglyph,
-				                                             NULL);
-			} else {
-				g_TaskParameter.error = FTC_SBitCache_Lookup(*g_TaskParameter.ftc_sbit_cache,
-				                                             &image_type,
-				                                             g_TaskParameter.glyph_index,
-				                                             g_TaskParameter.sbit,
-				                                             NULL);
-			}
-			vTaskDelay(1); // Important delay to prevent stack overflow
-		} break;
-		default:
-			g_TaskParameter.error = FT_Err_Invalid_Argument;
-		}
-
-		debugPrintf((g_TaskParameter.debug_level & OFR_INFO), "Render task Finish\n");
-		g_RenderTaskStatus = (g_TaskParameter.error == FT_Err_Ok) ? END_SUCCESS : END_ERROR;
-
-		break;
+		g_TaskParameter.error = FT_Glyph_To_Bitmap(&g_TaskParameter.image, FT_RENDER_MODE_NORMAL, NULL, false);
+		g_RenderTaskStatus    = (g_TaskParameter.error == FT_Err_Ok) ? END_SUCCESS : END_ERROR;
 	}
-
 	g_RenderTaskHandle = NULL;
 	vTaskDelete(NULL);
 }
 #endif
+
+/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
+//
+//  Functions
+//  ( Direct calls are deprecated. )
+//
+/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
+
+void set_printFunc(std::function<void(const char *)> user_func) {
+	g_Print = user_func;
+}
