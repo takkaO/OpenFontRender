@@ -10,12 +10,12 @@
 
 #include "OpenFontRender.h"
 
-/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_//_/_/_/_/_/_/_/_/_/*/
+/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 //
 //  Data Structure Definition
 //  (Use only within this file.)
 //
-/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_//_/_/_/_/_/_/_/_/_/*/
+/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 
 enum LoadFontFrom {
 	FROM_FILE,
@@ -42,22 +42,22 @@ enum RenderTaskStatus {
 typedef struct {
 	enum RenderMode mode;          // Rendering mode
 	FTC_Manager *ftc_manager;      // ftc_manager obj
-	FTC_SBitCache *ftc_sbit_cache; // ftc_sbit_cache obj
+	FTC_ImageCache *ftc_image_cache; // ftc_image_cache obj
 	uint8_t face_id;               // face id
 	size_t font_size;              // font size
 	FT_UInt glyph_index;           // glyph index
-	FTC_SBit *sbit;                // result
+	FT_Glyph *aglyph;			   // result
 	FT_Error error;                // ft_error
 	uint8_t debug_level;           // debug level
 } RenderTaskParameter;
 #endif
 
-/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_//_/_/_/_/_/_/_/_/_/*/
+/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 //
 //  Function Definition
 //  (See below more ditails.)
 //
-/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_//_/_/_/_/_/_/_/_/_/*/
+/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 
 FT_Error ftc_face_requester(FTC_FaceID face_id,
                             FT_Library library,
@@ -70,12 +70,12 @@ void debugPrintf(uint8_t level, const char *fmt, ...);
 void RenderTask(void *pvParameters);
 #endif
 
-/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_//_/_/_/_/_/_/_/_/_/*/
+/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 //
 //  Global Variables
 //  (Use only within this file.)
 //
-/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_//_/_/_/_/_/_/_/_/_/*/
+/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 
 FT_Library g_FtLibrary;
 uint8_t g_AvailableFaceId = 0;
@@ -88,11 +88,11 @@ volatile bool g_UseRenderTask                     = (FREETYPE_MAJOR == 2 && FREE
 RenderTaskParameter g_TaskParameter;
 #endif
 
-/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_//_/_/_/_/_/_/_/_/_/*/
+/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 //
 //  OpenFontRender Class Public Methods
 //
-/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_//_/_/_/_/_/_/_/_/_/*/
+/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 
 OpenFontRender::OpenFontRender() {
 	// TODO: Automatic support some micro computers
@@ -111,12 +111,14 @@ OpenFontRender::OpenFontRender() {
 	_max_sizes = OFR_CACHE_SIZE_NO_LIMIT;
 	_max_bytes = OFR_CACHE_SIZE_NO_LIMIT;
 
+	_font.line_space_ratio = 1.0; // Set default line space ratio
 	_font.size     = 44;     // Set default font size
 	_font.fg_color = 0xFFFF; // Set default font color (White)
 	_font.bg_color = 0x0000; // Set default background color (Black)
+	_font.support_vertical = false;
 	_debug_level   = OFR_NONE;
 
-	_render_mode = NORMAL;
+	_render_mode     = NORMAL;
 }
 
 void OpenFontRender::setUseRenderTask(bool enable) {
@@ -129,15 +131,15 @@ void OpenFontRender::setRenderTaskMode(enum RenderMode mode) {
 	_render_mode = mode;
 }
 
-void OpenFontRender::setCursor(uint32_t x, uint32_t y) {
+void OpenFontRender::setCursor(int32_t x, int32_t y) {
 	_cursor = {x, y};
 }
 
-uint32_t OpenFontRender::getCursorX() {
+int32_t OpenFontRender::getCursorX() {
 	return _cursor.x;
 }
 
-uint32_t OpenFontRender::getCursorY() {
+int32_t OpenFontRender::getCursorY() {
 	return _cursor.y;
 }
 
@@ -164,6 +166,10 @@ void OpenFontRender::setFontColor(uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br
 	_font.bg_color = color565(br, bg, bb);
 }
 
+void OpenFontRender::setBackgroundColor(uint16_t font_bgcolor) {
+	_font.bg_color = font_bgcolor;
+}
+
 uint16_t OpenFontRender::getFontColor() {
 	return _font.fg_color;
 }
@@ -172,12 +178,25 @@ uint16_t OpenFontRender::getBackgroundColor() {
 	return _font.bg_color;
 }
 
-void OpenFontRender::setFontSize(size_t new_size) {
-	_font.size = new_size;
+void OpenFontRender::setFontSize(unsigned int pixel) {
+	_font.size = pixel;
 }
 
-size_t OpenFontRender::getFontSize() {
+unsigned int OpenFontRender::getFontSize() {
 	return _font.size;
+}
+
+double OpenFontRender::setLineSpaceRatio(double line_space_ratio) {
+	if (line_space_ratio <= 0) {
+		// Invalid argument
+		return _font.line_space_ratio;
+	}
+	_font.line_space_ratio = line_space_ratio;
+	return _font.line_space_ratio;
+}
+
+double OpenFontRender::getLineSpaceRatio() {
+	return _font.line_space_ratio;
 }
 
 void OpenFontRender::setCacheSize(unsigned int max_faces, unsigned int max_sizes, unsigned long max_bytes) {
@@ -213,17 +232,24 @@ FT_Error OpenFontRender::loadFont(const unsigned char *data, size_t size) {
 		debugPrintf((_debug_level & OFR_ERROR), "FTC_Manager_LookupFace error: 0x%02X\n", error);
 		return error;
 	}
-	
+
 	error = FTC_CMapCache_New(_ftc_manager, &_ftc_cmap_cache);
 	if (error) {
 		debugPrintf((_debug_level & OFR_ERROR), "FTC_CMapCache_New error: 0x%02X\n", error);
 		return error;
 	}
 
-	error = FTC_SBitCache_New(_ftc_manager, &_ftc_sbit_cache);
+	error = FTC_ImageCache_New(_ftc_manager, &_ftc_image_cache);
 	if (error) {
-		debugPrintf((_debug_level & OFR_ERROR), "FTC_SBitCache_New error: 0x%02X\n", error);
+		debugPrintf((_debug_level & OFR_ERROR), "FTC_ImageCache_New error: 0x%02X\n", error);
 		return error;
+	}
+
+	if (FT_HAS_VERTICAL(face) == 0) {
+		// Current font does NOT support vertical layout
+		_font.support_vertical = false;
+	} else {
+		_font.support_vertical = true;
 	}
 
 	return FT_Err_Ok;
@@ -263,10 +289,17 @@ FT_Error OpenFontRender::loadFont(const char *fpath) {
 		return error;
 	}
 
-	error = FTC_SBitCache_New(_ftc_manager, &_ftc_sbit_cache);
+	error = FTC_ImageCache_New(_ftc_manager, &_ftc_image_cache);
 	if (error) {
-		debugPrintf((_debug_level & OFR_ERROR), "FTC_SBitCache_New error: 0x%02X\n", error);
+		debugPrintf((_debug_level & OFR_ERROR), "FTC_ImageCache_New error: 0x%02X\n", error);
 		return error;
+	}
+
+	if (FT_HAS_VERTICAL(face) == 0) {
+		// Current font does NOT support vertical layout
+		_font.support_vertical = false;
+	} else {
+		_font.support_vertical = true;
 	}
 
 	return FT_Err_Ok;
@@ -279,167 +312,267 @@ void OpenFontRender::unloadFont() {
 	g_NeedInitialize = true;
 }
 
-FT_Error OpenFontRender::drawChar(uint16_t unicode, uint32_t x, uint32_t y, uint16_t fg, uint16_t bg, bool right_direction, bool no_draw) {
+uint16_t OpenFontRender::drawHString(const char *str,
+                                     int32_t x,
+                                     int32_t y,
+                                     uint16_t fg,
+                                     uint16_t bg,
+                                     Align align,
+                                     Drawing drawing,
+                                     FT_BBox &abbox,
+									 FT_Error &error) {
+	
 	FT_Face face;
-	FT_Error error;
-	FTC_SBit _sbit;
+	FT_Glyph aglyph;
+	uint16_t written_char_num = 0;
+	bool detect_control_char = false;
+	Cursor initial_position   = {x, y};
+	Cursor current_line_position = {x, y};
+	FT_Vector offset = {0, 0};
+	FT_Size asize = NULL;
+
+	FT_BBox bbox;
+	bbox.xMin = bbox.yMin = LONG_MAX;
+	bbox.xMax = bbox.yMax = LONG_MIN;
+
+	abbox.xMin = abbox.yMin = LONG_MAX;
+	abbox.xMax = abbox.yMax = LONG_MIN;
+
 	FTC_ImageTypeRec image_type;
-	_cursor = {x, y};
-
-	error = FTC_Manager_LookupFace(_ftc_manager, (FTC_FaceID)_face_id, &face);
-	if (error) {
-		return error;
-	}
-
-	FT_Int cmap_index   = FT_Get_Charmap_Index(face->charmap);
-	FT_UInt glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache,
-	                                           (FTC_FaceID)_face_id,
-	                                           cmap_index,
-	                                           unicode);
-
-#ifdef FREERTOS_CONFIG_H
-	if (g_UseRenderTask) {
-		if (g_RenderTaskHandle == NULL) {
-			debugPrintf((_debug_level & OFR_INFO), "Create render task\n");
-			const uint8_t RUNNING_CORE = 1;
-			const uint8_t PRIORITY     = 1;
-			xTaskCreateUniversal(RenderTask,
-			                     "RenderTask",
-			                     8192 + 2048, // It seems that larger than 1024 is better.
-			                     NULL,
-			                     PRIORITY,
-			                     &g_RenderTaskHandle,
-			                     RUNNING_CORE);
-		}
-
-		while (g_RenderTaskStatus != IDLE) {
-			vTaskDelay(1);
-		}
-		g_RenderTaskStatus = LOCK;
-
-		g_TaskParameter.mode           = _render_mode;
-		g_TaskParameter.ftc_manager    = &_ftc_manager;
-		g_TaskParameter.face_id        = _face_id;
-		g_TaskParameter.font_size      = _font.size;
-		g_TaskParameter.glyph_index    = glyph_index;
-		g_TaskParameter.debug_level    = _debug_level;
-		g_TaskParameter.sbit           = &_sbit;
-		g_TaskParameter.ftc_sbit_cache = &_ftc_sbit_cache; // for WITH_CACHE mode
-
-		g_RenderTaskStatus = RENDERING;
-		while (g_RenderTaskStatus == RENDERING) {
-			vTaskDelay(1);
-		}
-
-		if (g_RenderTaskStatus == END_ERROR) {
-			g_RenderTaskStatus = IDLE;
-			debugPrintf((_debug_level & OFR_ERROR), "Render task error: 0x%02X\n", g_TaskParameter.error);
-			return g_TaskParameter.error;
-		}
-
-	} else {
-		image_type.face_id = (FTC_FaceID)_face_id;
-		image_type.width   = 0;
-		image_type.height  = _font.size;
-		image_type.flags   = FT_LOAD_RENDER;
-		error              = FTC_SBitCache_Lookup(_ftc_sbit_cache, &image_type, glyph_index, &_sbit, NULL);
-		if (error) {
-			debugPrintf((_debug_level & OFR_ERROR), "FTC_SBitCache_Lookup error: 0x%02X\n", error);
-			return error;
-		}
-	}
-
-#else
 	image_type.face_id = (FTC_FaceID)_face_id;
 	image_type.width   = 0;
 	image_type.height  = _font.size;
-	image_type.flags   = FT_LOAD_RENDER;
-	error              = FTC_SBitCache_Lookup(_ftc_sbit_cache, &image_type, glyph_index, &_sbit, NULL);
+	image_type.flags   = FT_LOAD_DEFAULT;
+
+	FTC_ScalerRec scaler;
+	scaler.face_id = (FTC_FaceID)_face_id;
+	scaler.width   = 0;
+	scaler.height  = _font.size;
+	scaler.pixel   = true;
+	scaler.x_res   = 0;
+	scaler.y_res   = 0;
+
+	std::vector<RenderStringInfo> v_rsi;
+	v_rsi.reserve(256); // Allocate memory for 256 characters for efficiency
+
+	// decode UTF8
+	uint16_t unicode;
+	uint16_t len = strlen(str);
+	uint16_t n   = 0;
+	std::queue<FT_UInt32> unicode_q;
+	while (n < len) {
+		uint16_t unicode = decodeUTF8((uint8_t *)str, &n, len - n);
+		unicode_q.push(unicode);
+	}
+
+	error = FTC_Manager_LookupSize(_ftc_manager, &scaler, &asize);
 	if (error) {
-		debugPrintf((_debug_level & OFR_ERROR), "FTC_SBitCache_Lookup error: 0x%02X\n", error);
-		return error;
+		return written_char_num;
 	}
-#endif
+	face = asize->face;
+	FT_Int cmap_index = FT_Get_Charmap_Index(face->charmap);
 
-	// Set the drawing coordinate of the character to the upper left.
-	y += ((face->bbox.yMax - face->bbox.yMin + (face->size->metrics.descender >> 6)) * _font.size / face->units_per_EM);
-	if (right_direction) {
-		x = x - _sbit->xadvance;
+	// Rendering loop
+	while (unicode_q.size() != 0) {
+		RenderStringInfo rsi;
+		detect_control_char = false;
+		current_line_position = {x, y};
+		bbox.xMin = bbox.yMin = LONG_MAX;
+		bbox.xMax = bbox.yMax = LONG_MIN;
+		v_rsi.clear();
+
+		// Glyph extraction
+		while (unicode_q.size() != 0 && detect_control_char == false) {
+			unicode = unicode_q.front();
+			switch (unicode) {
+			case '\r':
+				[[fallthrough]];	// Fall Through
+			case '\n':
+				detect_control_char = true;
+				break;
+			default:
+				rsi.pos = {x, y};
+				FT_UInt glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache,
+				                                           (FTC_FaceID)_face_id,
+				                                           cmap_index,
+				                                           unicode);
+
+				error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
+				if (error) {
+					debugPrintf((_debug_level & OFR_ERROR), "FTC_ImageCache_Lookup error: 0x%02X\n", error);
+					return written_char_num;
+				}
+
+				error = FT_Glyph_Copy(aglyph, &rsi.glyph);
+				if (error) {
+					debugPrintf((_debug_level & OFR_ERROR), "FT_Glyph_Copy error: 0x%02X\n", error);
+					return written_char_num;
+				}
+				v_rsi.push_back(rsi);
+
+				x += (aglyph->advance.x >> 16);
+			}
+			unicode_q.pop();
+		}
+
+		// Caluculate BBox
+		for (int i = 0; i < v_rsi.size(); i++) {
+			FT_BBox glyph_bbox;
+			FT_Glyph_Get_CBox(v_rsi[i].glyph, FT_GLYPH_BBOX_PIXELS, &glyph_bbox);
+
+			// Move coordinates on the grid
+			glyph_bbox.xMin += v_rsi[i].pos.x;
+			glyph_bbox.xMax += v_rsi[i].pos.x;
+			glyph_bbox.yMin += v_rsi[i].pos.y;
+			glyph_bbox.yMax += v_rsi[i].pos.y;
+
+			// Merge bbox
+			bbox.xMin = std::min(bbox.xMin, glyph_bbox.xMin);
+			bbox.yMin = std::min(bbox.yMin, glyph_bbox.yMin);
+			bbox.xMax = std::max(bbox.xMax, glyph_bbox.xMax);
+			bbox.yMax = std::max(bbox.yMax, glyph_bbox.yMax);
+		}
+
+		/* Check that we really grew the string bbox */
+		if (bbox.xMin > bbox.xMax) {
+			// Failed
+			bbox.xMin = 0;
+			bbox.yMin = 0;
+			bbox.xMax = 0;
+			bbox.yMax = 0;
+		} else {
+			// Transform coordinate space differences
+			bbox.yMax = y - (bbox.yMax - y) + ((face->size->metrics.ascender) >> 6);
+			bbox.yMin = y + (y - bbox.yMin) + ((face->size->metrics.ascender) >> 6);
+			if (bbox.yMax < bbox.yMin) {
+				std::swap(bbox.yMax, bbox.yMin);
+			}
+			// Correct slight misalignment of each axis
+			offset.x = bbox.xMin - current_line_position.x;
+			offset.y = bbox.yMin - current_line_position.y;
+		}
+
+		switch (align) {
+		case Align::Left:
+			// Nothing to do
+			break;
+		case Align::Center:
+			offset.x += ((bbox.xMax - bbox.xMin) / 2);
+			break;
+		case Align::Right:
+			offset.x = (bbox.xMax - bbox.xMin);
+			break;
+		default:
+			break;
+		}
+
+		bbox.xMin -= offset.x;
+		bbox.xMax -= offset.x;
+		bbox.yMin -= offset.y;
+		bbox.yMax -= offset.y;
+
+		if (drawing == Drawing::Execute) {
+			for (int i = 0; i < v_rsi.size(); i++) {
+				FT_Glyph image = v_rsi[i].glyph;
+				FT_Vector pos  = {(v_rsi[i].pos.x - offset.x), (v_rsi[i].pos.y - offset.y)};
+				// Change baseline to left top
+				pos.y += ((face->size->metrics.ascender) >> 6);
+
+				error = FT_Glyph_To_Bitmap(&image, FT_RENDER_MODE_NORMAL, NULL, false);
+				if (!error) {
+					FT_BitmapGlyph bit = (FT_BitmapGlyph)image;
+
+					draw2screen(bit, pos.x, pos.y, fg, bg);
+
+					FT_Done_Glyph(image);
+					written_char_num++;
+				}
+			}
+		}
+
+		if (detect_control_char) {
+			switch (unicode) {
+			case '\r':
+				x = initial_position.x;
+				break;
+			case '\n':
+				x = initial_position.x;
+				y += getFontMaxHeight() * _font.line_space_ratio;
+				break;
+			default:
+				// No supported control char
+				break;
+			}
+		}
+
+		// Merge bbox
+		abbox.xMin = std::min(bbox.xMin, abbox.xMin);
+		abbox.yMin = std::min(bbox.yMin, abbox.yMin);
+		abbox.xMax = std::max(bbox.xMax, abbox.xMax);
+		abbox.yMax = std::max(bbox.yMax, abbox.yMax);
+	} /* End of rendering loop */
+
+	if (detect_control_char && unicode == '\n') {
+		// If string end with '\n' control char, expand bbox
+		abbox.yMax += getFontMaxHeight() * _font.line_space_ratio;
 	}
 
-	if (!no_draw) {
-		draw2screen(_sbit, x, y, fg, bg);
-	}
-	_cursor.x = (right_direction ? _cursor.x - _sbit->xadvance : _cursor.x + _sbit->xadvance); // Seek cursor
-	_cursor.y += _sbit->yadvance;                                                              // Seek cursor
+	_cursor = {x, y};
+	return written_char_num;
+}
 
-#ifdef FREERTOS_CONFIG_H
-	g_RenderTaskStatus = IDLE;
-#endif
+FT_Error OpenFontRender::drawChar(char character, int32_t x, int32_t y, uint16_t fg, uint16_t bg, Align align) {
+	FT_Error error;
+	FT_BBox bbox;
+
+	drawHString(&character, x, y, fg, bg, Align::Left, Drawing::Execute, bbox, error);
 
 	return FT_Err_Ok;
 }
 
-uint16_t OpenFontRender::drawString(const char *str, uint32_t x, uint32_t y, uint16_t fg, uint16_t bg) {
+uint16_t OpenFontRender::drawString(const char *str, int32_t x, int32_t y, uint16_t fg, uint16_t bg, Layout layout) {
 	FT_Error error;
-	return drawString(str, x, y, fg, bg, false, false, &error);
+	FT_BBox bbox;
+
+	switch (layout) {
+	case Layout::Horizontal:
+		return drawHString(str, x, y, fg, bg, Align::Left, Drawing::Execute, bbox, error);
+	case Layout::Vertical:
+		// Not support now
+		return 0;
+	default:
+		return 0;
+	}
 }
 
-uint16_t OpenFontRender::rdrawString(const char *str, uint32_t x, uint32_t y, uint16_t fg, uint16_t bg) {
+uint16_t OpenFontRender::cdrawString(const char *str, int32_t x, int32_t y, uint16_t fg, uint16_t bg, Layout layout) {
 	FT_Error error;
-	return drawString(str, x, y, fg, bg, true, false, &error);
+	FT_BBox bbox;
+
+	switch (layout) {
+	case Layout::Horizontal:
+		return drawHString(str, x, y, fg, bg, Align::Center, Drawing::Execute, bbox, error);
+	case Layout::Vertical:
+		// Not support now
+		return 0;
+	default:
+		return 0;
+	}
 }
 
-uint16_t OpenFontRender::drawString(const char *str, uint32_t x, uint32_t y, uint16_t fg, uint16_t bg, bool right_direction, bool no_draw, FT_Error *error) {
-	uint16_t len            = strlen(str);
-	uint16_t n              = 0;
-	uint16_t wrote_char_num = 0;
-	uint32_t max_height;
-	std::deque<uint16_t> unicode_q;
-	uint16_t q_count = 0;
-	_cursor          = {x, y};
+uint16_t OpenFontRender::rdrawString(const char *str, int32_t x, int32_t y, uint16_t fg, uint16_t bg, Layout layout) {
+	FT_Error error;
+	FT_BBox bbox;
 
-	{
-		FT_Face face;
-		*error = FTC_Manager_LookupFace(_ftc_manager, (FTC_FaceID)_face_id, &face);
-		if (*error) {
-			return wrote_char_num;
-		}
-		max_height = (face->height) * _font.size / face->units_per_EM;
+	switch (layout) {
+	case Layout::Horizontal:
+		return drawHString(str, x, y, fg, bg, Align::Right, Drawing::Execute, bbox, error);
+	case Layout::Vertical:
+		// Not support now
+		return 0;
+	default:
+		return 0;
 	}
-
-	while (n < len) {
-		uint16_t unicode = decodeUTF8((uint8_t *)str, &n, len - n);
-		if (right_direction) {
-			unicode_q.push_front(unicode);
-		} else {
-			unicode_q.push_back(unicode);
-		}
-		q_count++;
-	}
-
-	for (wrote_char_num = 0; wrote_char_num < q_count; wrote_char_num++) {
-		uint16_t unicode = unicode_q.front();
-		if (unicode == '\r') {
-			_cursor.x = 0;
-			unicode_q.pop_front();
-			continue;
-		}
-		if (unicode == '\n') {
-			_cursor.x = 0;
-			_cursor.y += max_height;
-			unicode_q.pop_front();
-			continue;
-		}
-
-		*error = drawChar(unicode, _cursor.x, _cursor.y, fg, bg, right_direction, no_draw);
-		if (*error) {
-			return wrote_char_num;
-		}
-		unicode_q.pop_front();
-	}
-
-	return wrote_char_num;
 }
 
 uint16_t OpenFontRender::printf(const char *fmt, ...) {
@@ -450,7 +583,18 @@ uint16_t OpenFontRender::printf(const char *fmt, ...) {
 	vsnprintf(str, 256, fmt, ap);
 	va_end(ap);
 
-	return drawString(str, _cursor.x, _cursor.y, _font.fg_color, _font.bg_color);
+	return drawString(str, _cursor.x, _cursor.y, _font.fg_color, _font.bg_color, Layout::Horizontal);
+}
+
+uint16_t OpenFontRender::cprintf(const char *fmt, ...) {
+	char str[256] = {0};
+	va_list ap;
+
+	va_start(ap, fmt);
+	vsnprintf(str, 256, fmt, ap);
+	va_end(ap);
+
+	return cdrawString(str, _cursor.x, _cursor.y, _font.fg_color, _font.bg_color, Layout::Horizontal);
 }
 
 uint16_t OpenFontRender::rprintf(const char *fmt, ...) {
@@ -461,10 +605,10 @@ uint16_t OpenFontRender::rprintf(const char *fmt, ...) {
 	vsnprintf(str, 256, fmt, ap);
 	va_end(ap);
 
-	return rdrawString(str, _cursor.x, _cursor.y, _font.fg_color, _font.bg_color);
+	return rdrawString(str, _cursor.x, _cursor.y, _font.fg_color, _font.bg_color, Layout::Horizontal);
 }
 
-BoundingBox OpenFontRender::calculateBoundingBoxFmt(uint32_t x, uint32_t y, size_t font_size, bool right_direction, const char *fmt, ...) {
+FT_BBox OpenFontRender::calculateBoundingBoxFmt(int32_t x, int32_t y, unsigned int font_size, Align align, Layout layout, const char *fmt, ...) {
 	char str[256] = {0};
 	va_list ap;
 
@@ -472,40 +616,37 @@ BoundingBox OpenFontRender::calculateBoundingBoxFmt(uint32_t x, uint32_t y, size
 	vsnprintf(str, 256, fmt, ap);
 	va_end(ap);
 
-	return calculateBoundingBox(x, y, font_size, right_direction, (const char *)str);
+	return calculateBoundingBox(x, y, font_size, align, layout, (const char *)str);
 }
 
-BoundingBox OpenFontRender::calculateBoundingBox(uint32_t x, uint32_t y, size_t font_size, bool right_direction, const char *str) {
+
+FT_BBox OpenFontRender::calculateBoundingBox(int32_t x, int32_t y, unsigned int font_size, Align align, Layout layout, const char *str) {
 	FT_Error error;
+	FT_BBox bbox;
 	size_t tmp_font_size = getFontSize();
 	Cursor tmp_cursor    = _cursor;
-	uint32_t max_height  = 0;
-	uint32_t y_offset    = 0;
-	BoundingBox bbox;
 
+	_cursor = {x, y};
 	setFontSize(font_size);
-	drawString(str, x, y, 0xFFFF, 0x0000, right_direction, true, &error);
 
-	{
-		FT_Face face;
-		error = FTC_Manager_LookupFace(_ftc_manager, (FTC_FaceID)_face_id, &face);
-		if (error) {
-			return bbox;
-		}
-		// Calculation not accurate
-		// max_height = (face->bbox.yMax - face->bbox.yMin) * _font.size / face->units_per_EM;
-		max_height = (face->height) * _font.size / face->units_per_EM;
-		y_offset   = face->bbox.yMin * _font.size / face->units_per_EM;
+	switch (layout) {
+	case Layout::Horizontal:
+		drawHString(str, x, y, 0xFFFF, 0x0000, align, Drawing::Skip, bbox, error);
+		break;
+	case Layout::Vertical:
+		// Not support now
+		break;
+	default:
+		break;
 	}
 
-	bbox.setBoundingBoxWithCoordinates(x, y - y_offset, _cursor.x, _cursor.y + max_height);
 	setFontSize(tmp_font_size);
 	_cursor = tmp_cursor;
 
 	return bbox;
 }
 
-size_t OpenFontRender::calculateFitFontSizeFmt(uint32_t limit_width, uint32_t limit_height, const char *fmt, ...) {
+unsigned int OpenFontRender::calculateFitFontSizeFmt(uint32_t limit_width, uint32_t limit_height, Layout layout, const char *fmt, ...) {
 	char str[256] = {0};
 	va_list ap;
 
@@ -513,45 +654,55 @@ size_t OpenFontRender::calculateFitFontSizeFmt(uint32_t limit_width, uint32_t li
 	vsnprintf(str, 256, fmt, ap);
 	va_end(ap);
 
-	return calculateFitFontSize(limit_width, limit_height, (const char *)str);
+	return calculateFitFontSize(limit_width, limit_height, layout, (const char *)str);
 }
 
-size_t OpenFontRender::calculateFitFontSize(uint32_t limit_width, uint32_t limit_height, const char *str) {
+unsigned int OpenFontRender::calculateFitFontSize(uint32_t limit_width, uint32_t limit_height, Layout layout, const char *str) {
 	FT_Error error;
+	FT_BBox bbox1 = {0, 0, 0, 0}; 
+	FT_BBox bbox2        = {0, 0, 0, 0};
 	size_t tmp_font_size = getFontSize();
 	Cursor tmp_cursor    = _cursor;
-	size_t fs1           = 10;
-	size_t fs2           = 40;
+	unsigned int fs1           = 10;
+	unsigned int fs2     = 50;
+	int32_t w1, w2, h1, h2;
 
+	// point1
 	setFontSize(fs1);
-	drawString(str, 0, 0, 0xFFFF, 0x0000, false, true, &error);
-	int32_t x1 = _cursor.x;
-
-	setFontSize(fs2);
-	drawString(str, 0, 0, 0xFFFF, 0x0000, false, true, &error);
-	int32_t x2 = _cursor.x;
-
-	int32_t y1, y2;
-	{
-		FT_Face face;
-		error = FTC_Manager_LookupFace(_ftc_manager, (FTC_FaceID)_face_id, &face);
-		if (error) {
-			return 0;
-		}
-		// Calculation not accurate
-		// max_height = (face->bbox.yMax - face->bbox.yMin) * _font.size / face->units_per_EM;
-		y1 = (face->height) * fs1 / face->units_per_EM;
-		y2 = (face->height) * fs2 / face->units_per_EM;
+	switch (layout) {
+	case Layout::Horizontal:
+		drawHString(str, 0, 0, 0xFFFF, 0x0000, Align::Left, Drawing::Skip, bbox1, error);
+		break;
+	case Layout::Vertical:
+		// Not support now
+		break;
+	default:
+		setFontSize(tmp_font_size);
+		_cursor = tmp_cursor;
+		return 0;
 	}
+	w1 = bbox1.xMax - bbox1.xMin;
+	h1 = bbox1.yMax - bbox1.yMin;
 
-	double a1 = (double)(x2 - x1) / (double)((int32_t)fs2 - (int32_t)fs1);
-	double b1 = (double)((int32_t)fs2 * x1 - ((int32_t)fs1 * x2)) / (double)((int32_t)fs2 - (int32_t)fs1);
+	// point2
+	setFontSize(fs2);
+	switch (layout) {
+	case Layout::Horizontal:
+		drawHString(str, 0, 0, 0xFFFF, 0x0000, Align::Left, Drawing::Skip, bbox2, error);
+		break;
+	case Layout::Vertical:
+		// Not support now
+		break;
+	default:
+		setFontSize(tmp_font_size);
+		_cursor = tmp_cursor;
+		return 0;
+	}
+	w2 = bbox2.xMax - bbox2.xMin;
+	h2 = bbox2.yMax - bbox2.yMin;
 
-	double a2 = (double)(y2 - y1) / (double)((int32_t)fs2 - (int32_t)fs1);
-	double b2 = (double)((int32_t)fs2 * y1 - (int32_t)fs1 * y2) / (double)((int32_t)fs2 - (int32_t)fs1);
-
-	size_t wfs = (size_t)std::floor((limit_width - b1) / (a1 + 0.00001));
-	size_t hfs = (size_t)std::floor((limit_height - b2) / (a2 + 0.00001));
+	unsigned int wfs = ((fs2 - fs1) / (w2 - w1 + 0.000001)) * (limit_width - w1) + fs1;
+	unsigned int hfs = ((fs2 - fs1) / (h2 - h1 + 0.000001)) * (limit_height - h1) + fs1;
 
 	setFontSize(tmp_font_size);
 	_cursor = tmp_cursor;
@@ -559,35 +710,27 @@ size_t OpenFontRender::calculateFitFontSize(uint32_t limit_width, uint32_t limit
 	return std::min(wfs, hfs);
 }
 
-void OpenFontRender::showFreeTypeVersion(Print &output) {
-	String str = "FreeType version: ";
-	str += String(FREETYPE_MAJOR) + ".";
-	str += String(FREETYPE_MINOR) + ".";
-	str += String(FREETYPE_PATCH) + "\n";
-
-	output.print(str.c_str());
+void OpenFontRender::getFreeTypeVersion(char *str) {
+	snprintf(str, OFR_FT_VERSION_STRING_SIZE,
+	         "FreeType version: %d.%d.%d\n", FREETYPE_MAJOR, FREETYPE_MINOR, FREETYPE_PATCH);
 }
 
-void OpenFontRender::showCredit(Print &output) {
-	String str = "Portions of this software are copyright © < ";
-	str += String(FREETYPE_MAJOR) + ".";
-	str += String(FREETYPE_MINOR) + ".";
-	str += String(FREETYPE_PATCH) + " ";
-	str += "> The FreeTypeProject (www.freetype.org).  All rights reserved.\n";
-
-	output.print(str.c_str());
+void OpenFontRender::getCredit(char* str) {
+	snprintf(str, OFR_CREDIT_STRING_SIZE,
+	         "Portions of this software are copyright (c) < %d.%d.%d > The FreeTypeProject (www.freetype.org).  All rights reserved.\n", 
+		FREETYPE_MAJOR, FREETYPE_MINOR, FREETYPE_PATCH);
 }
 
 void OpenFontRender::setDebugLevel(uint8_t level) {
 	_debug_level = level;
 }
 
-/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_//_/_/_/_/_/_/_/_/_/*/
+/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 //
 //  OpenFontRender Class Public Methods
 //  ( Direct calls are deprecated. )
 //
-/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_//_/_/_/_/_/_/_/_/_/*/
+/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 
 void OpenFontRender::set_drawPixel(std::function<void(int32_t, int32_t, uint16_t)> user_func) {
 	_drawPixel = user_func;
@@ -599,19 +742,53 @@ void OpenFontRender::set_endWrite(std::function<void(void)> user_func) {
 	_endWrite = user_func;
 }
 
-/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_//_/_/_/_/_/_/_/_/_/*/
+/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 //
 //  OpenFontRender Class Private Methods
 //
-/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_//_/_/_/_/_/_/_/_/_/*/
+/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 
-void OpenFontRender::draw2screen(FTC_SBit sbit, uint32_t x, uint32_t y, uint16_t fg, uint16_t bg) {
+uint32_t OpenFontRender::getFontMaxHeight() {
+	FT_Error error;
+	FT_Face face;
+	FTC_ScalerRec scaler;
+	FT_Size asize = NULL;
+	static uint32_t max_height = 0;
+	static unsigned int prev_font_size = 0;
+
+	if (prev_font_size == _font.size) {
+		return max_height;
+	}
+
+	scaler.face_id = (FTC_FaceID)_face_id;
+	scaler.width   = 0;
+	scaler.height  = _font.size;
+	scaler.pixel   = true;
+	scaler.x_res   = 0;
+	scaler.y_res   = 0;
+
+	//error = FTC_Manager_LookupFace(_ftc_manager, (FTC_FaceID)_face_id, &face);
+	error = FTC_Manager_LookupSize(_ftc_manager, &scaler, &asize);
+	if (error) {
+		return 0;
+	}
+	face = asize->face;
+
+	int bbox_ymax = FT_MulFix(face->bbox.yMax, face->size->metrics.y_scale) >> 6;
+	int bbox_ymin = FT_MulFix(face->bbox.yMin, face->size->metrics.y_scale) >> 6;
+	max_height    = (bbox_ymax - bbox_ymin);
+
+	prev_font_size = _font.size;
+	return max_height;
+}
+
+void OpenFontRender::draw2screen(FT_BitmapGlyph glyph, uint32_t x, uint32_t y, uint16_t fg, uint16_t bg) {
 	_startWrite();
-	for (size_t _y = 0; _y < sbit->height; ++_y) {
-		for (size_t _x = 0; _x < sbit->width; ++_x) {
-			uint8_t alpha = sbit->buffer[_y * sbit->pitch + _x];
+	for (size_t _y = 0; _y < glyph->bitmap.rows; ++_y) {
+		for (size_t _x = 0; _x < glyph->bitmap.width; ++_x) {
+			uint8_t alpha = glyph->bitmap.buffer[_y * glyph->bitmap.pitch + _x];
 			debugPrintf((_debug_level & OFR_DEBUG) ? OFR_RAW : OFR_NONE, "%c", (alpha == 0x00 ? ' ' : 'o'));
-			_drawPixel(_x + x + sbit->left, _y + y - sbit->top, alphaBlend(alpha, fg, bg));
+			_drawPixel(_x + x + glyph->left, _y + y - glyph->top, alphaBlend(alpha, fg, bg));
 		}
 		debugPrintf((_debug_level & OFR_DEBUG) ? OFR_RAW : OFR_NONE, "\n");
 	}
@@ -666,12 +843,12 @@ uint16_t OpenFontRender::alphaBlend(uint8_t alpha, uint16_t fgc, uint16_t bgc) {
 	return (r << 11) | (g << 5) | (b << 0);
 }
 
-/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_//_/_/_/_/_/_/_/_/_/*/
+/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 //
 //  Functions
 //  (Use only within this file.)
 //
-/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_//_/_/_/_/_/_/_/_/_/*/
+/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 
 FT_Error ftc_face_requester(FTC_FaceID face_id, FT_Library library, FT_Pointer request_data, FT_Face *face) {
 	FT_Error error;
@@ -689,6 +866,7 @@ FT_Error ftc_face_requester(FTC_FaceID face_id, FT_Library library, FT_Pointer r
 		} else {
 			debugPrintf((info->debug_level & OFR_INFO), "Font load Success!\n");
 		}
+		//error = FT_Set_Pixel_Sizes(*face, 30, 0);
 
 	} else if (info->from == FROM_MEMORY) {
 		debugPrintf((info->debug_level & OFR_INFO), "Load from memory.\n");
@@ -833,11 +1011,20 @@ void RenderTask(void *pvParameters) {
 			image_type.face_id = (FTC_FaceID)g_TaskParameter.face_id;
 			image_type.height  = g_TaskParameter.font_size;
 			vTaskDelay(1); // Important delay to prevent stack overflow
-			g_TaskParameter.error = FTC_SBitCache_Lookup(*g_TaskParameter.ftc_sbit_cache,
-			                                             &image_type,
-			                                             g_TaskParameter.glyph_index,
-			                                             g_TaskParameter.sbit,
-			                                             NULL);
+			
+			if (g_TaskParameter.support_big_font) {
+				g_TaskParameter.error = FTC_ImageCache_Lookup(*g_TaskParameter.ftc_image_cache,
+				                                             &image_type,
+				                                             g_TaskParameter.glyph_index,
+				                                             g_TaskParameter.aglyph,
+				                                             NULL);
+			} else {
+				g_TaskParameter.error = FTC_SBitCache_Lookup(*g_TaskParameter.ftc_sbit_cache,
+				                                             &image_type,
+				                                             g_TaskParameter.glyph_index,
+				                                             g_TaskParameter.sbit,
+				                                             NULL);
+			}
 			vTaskDelay(1); // Important delay to prevent stack overflow
 		} break;
 		default:

@@ -13,22 +13,21 @@
 
 #include <list>
 
-#if defined(ARDUINO_M5Stack_Core_ESP32) || defined(ARDUINO_M5STACK_FIRE) || defined(ARDUINO_M5STACK_Core2)
-#define ENABLE_M5STACK
+
+#if defined(M5)
+#include <SD.h>
+#include <SPIFFS.h>
 #endif
 
 #if defined(ARDUINO_WIO_TERMINAL)
 #include <SPI.h>
 #include <Seeed_Arduino_FS.h>
-
-#else if defined(ENABLE_M5STACK)
-#include <SD.h>
-#include <SPIFFS.h>
 #endif
 
-#if defined(ARDUINO_WIO_TERMINAL) || defined(ENABLE_M5STACK)
+#if defined(ARDUINO_WIO_TERMINAL) || defined(M5)
 
 // TODO: want to make the program more abstract and common.
+
 #define FT_FILE fileclass_t
 #define ft_fclose ffsupport_fclose
 #define ft_fopen ffsupport_fopen
@@ -72,5 +71,6 @@ long int ffsupport_ftell(fileclass_t *stream);
 #define ft_srealloc realloc
 
 #endif
+
 
 #endif

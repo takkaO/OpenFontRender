@@ -10,7 +10,7 @@
 
 #include "FileSupport.h"
 
-#if defined(ARDUINO_WIO_TERMINAL) || defined(ENABLE_M5STACK)
+#if defined(ARDUINO_WIO_TERMINAL) || defined(M5)
 
 std::list<fileclass_t> f_list;
 fs::FS &fontFS = SD;
