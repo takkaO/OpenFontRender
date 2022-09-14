@@ -126,6 +126,8 @@ OpenFontRender::OpenFontRender() {
 	_font.bg_color         = 0x0000; // Set default background color (Black)
 	_font.support_vertical = false;
 	_debug_level           = OFR_NONE;
+
+	_transparent_background = false;
 }
 
 void OpenFontRender::setUseRenderTask(bool enable) {
@@ -185,6 +187,10 @@ uint16_t OpenFontRender::getFontColor() {
 
 uint16_t OpenFontRender::getBackgroundColor() {
 	return _font.bg_color;
+}
+
+void OpenFontRender::setTransparentBackground(bool enable) {
+	_transparent_background = enable;
 }
 
 void OpenFontRender::setFontSize(unsigned int pixel) {
@@ -843,6 +849,9 @@ void OpenFontRender::draw2screen(FT_BitmapGlyph glyph, uint32_t x, uint32_t y, u
 		for (size_t _x = 0; _x < glyph->bitmap.width; ++_x) {
 			uint8_t alpha = glyph->bitmap.buffer[_y * glyph->bitmap.pitch + _x];
 			debugPrintf((_debug_level & OFR_DEBUG) ? OFR_RAW : OFR_NONE, "%c", (alpha == 0x00 ? ' ' : 'o'));
+			if (_transparent_background && alpha == 0x00) {
+				continue;
+			}
 			_drawPixel(_x + x + glyph->left, _y + y - glyph->top, alphaBlend(alpha, fg, bg));
 		}
 		debugPrintf((_debug_level & OFR_DEBUG) ? OFR_RAW : OFR_NONE, "\n");

@@ -102,6 +102,7 @@ public:
 	                  uint8_t bg,
 	                  uint8_t bb);
 	void setBackgroundColor(uint16_t font_bgcolor);
+	void setTransparentBackground(bool enable);
 	uint16_t getFontColor();
 	uint16_t getBackgroundColor();
 	void setFontSize(unsigned int pixel);
@@ -193,6 +194,7 @@ private:
 	unsigned int _max_faces;
 	unsigned int _max_sizes;
 	unsigned long _max_bytes;
+	bool _transparent_background;
 
 	struct FontParameter {
 		double line_space_ratio;
