@@ -60,6 +60,20 @@ enum class Drawing {
 	Skip
 };
 
+namespace OFR {
+	enum LoadFontFrom {
+		FROM_FILE,
+		FROM_MEMORY
+	};
+
+	typedef struct FaceRec_ {
+		char *filepath;      // ttf file path
+		unsigned char *data; // ttf array
+		size_t data_size;    // ttf array size
+		uint8_t face_index;  // face index (default is 0)
+	} FaceRec, *Face;
+};
+
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 //
 //  Output function definition
@@ -111,8 +125,8 @@ public:
 	double getLineSpaceRatio();
 	void setCacheSize(unsigned int max_faces, unsigned int max_sizes, unsigned long max_bytes);
 
-	FT_Error loadFont(const unsigned char *data, size_t size);
-	FT_Error loadFont(const char *fpath);
+	FT_Error loadFont(const unsigned char *data, size_t size, uint8_t target_face_index = 0);
+	FT_Error loadFont(const char *fpath, uint8_t target_face_index = 0);
 	void unloadFont();
 
 	uint16_t drawHString(const char *str,
@@ -177,6 +191,7 @@ public:
 	void set_endWrite(std::function<void(void)> user_func);
 
 private:
+	FT_Error loadFont(enum OFR::LoadFontFrom from);
 	uint32_t getFontMaxHeight();
 	void draw2screen(FT_BitmapGlyph glyph, uint32_t x, uint32_t y, uint16_t fg, uint16_t bg);
 	uint16_t decodeUTF8(uint8_t *buf, uint16_t *index, uint16_t remaining);
@@ -190,11 +205,13 @@ private:
 	FTC_Manager _ftc_manager;
 	FTC_CMapCache _ftc_cmap_cache;
 	FTC_ImageCache _ftc_image_cache;
-	uint8_t _face_id;
+	// uint8_t _face_id;
 	unsigned int _max_faces;
 	unsigned int _max_sizes;
 	unsigned long _max_bytes;
 	bool _transparent_background;
+
+	OFR::FaceRec _face_id;
 
 	struct FontParameter {
 		double line_space_ratio;
