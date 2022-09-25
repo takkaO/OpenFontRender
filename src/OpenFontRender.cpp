@@ -69,6 +69,7 @@ void RenderTask(void *pvParameters);
 
 FT_Library g_FtLibrary;
 bool g_NeedInitialize = true;
+std::function<void(const char *)> g_Print;
 
 #ifdef FREERTOS_CONFIG_H
 TaskHandle_t g_RenderTaskHandle                   = NULL;
@@ -77,8 +78,6 @@ volatile bool g_UseRenderTask                     = (FREETYPE_MAJOR == 2 && FREE
 unsigned int g_RenderTaskStackSize                = 8192 + 8192 + 4096;
 RenderTaskParameter g_TaskParameter;
 #endif
-
-std::function<void(const char *)> g_Print;
 
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 //
@@ -107,9 +106,9 @@ OpenFontRender::OpenFontRender() {
 	_startWrite = []() { return; };
 	_endWrite   = []() { return; };
 
-	_max_faces = OFR_CACHE_SIZE_NO_LIMIT;
-	_max_sizes = OFR_CACHE_SIZE_NO_LIMIT;
-	_max_bytes = OFR_CACHE_SIZE_NO_LIMIT;
+	_max_faces = OpenFontRender::CACHE_SIZE_NO_LIMIT;
+	_max_sizes = OpenFontRender::CACHE_SIZE_NO_LIMIT;
+	_max_bytes = OpenFontRender::CACHE_SIZE_NO_LIMIT;
 
 	_face_id.filepath   = nullptr;
 	_face_id.data       = nullptr;
@@ -292,7 +291,7 @@ uint16_t OpenFontRender::drawHString(const char *str,
 
 	// decode UTF8
 	uint16_t unicode;
-	uint16_t len = strlen(str);
+	uint16_t len = (uint16_t)strlen(str);
 	uint16_t n   = 0;
 	std::queue<FT_UInt32> unicode_q;
 	while (n < len) {
@@ -467,7 +466,7 @@ uint16_t OpenFontRender::drawHString(const char *str,
 				break;
 			case '\n':
 				x = initial_position.x;
-				y += getFontMaxHeight() * _font.line_space_ratio;
+				y += (int32_t)(getFontMaxHeight() * _font.line_space_ratio);
 				break;
 			default:
 				// No supported control char
@@ -484,7 +483,7 @@ uint16_t OpenFontRender::drawHString(const char *str,
 
 	if (detect_control_char && unicode == '\n') {
 		// If string end with '\n' control char, expand bbox
-		abbox.yMax += getFontMaxHeight() * _font.line_space_ratio;
+		abbox.yMax += (int32_t)(getFontMaxHeight() * _font.line_space_ratio);
 	}
 
 	_cursor = {x, y};
@@ -591,8 +590,8 @@ FT_BBox OpenFontRender::calculateBoundingBoxFmt(int32_t x, int32_t y, unsigned i
 
 FT_BBox OpenFontRender::calculateBoundingBox(int32_t x, int32_t y, unsigned int font_size, Align align, Layout layout, const char *str) {
 	FT_Error error;
-	FT_BBox bbox;
-	size_t tmp_font_size = getFontSize();
+	FT_BBox bbox         = { 0, 0, 0, 0 };
+	unsigned int tmp_font_size = getFontSize();
 	Cursor tmp_cursor    = _cursor;
 
 	_cursor = {x, y};
@@ -630,7 +629,7 @@ unsigned int OpenFontRender::calculateFitFontSize(uint32_t limit_width, uint32_t
 	FT_Error error;
 	FT_BBox bbox1        = {0, 0, 0, 0};
 	FT_BBox bbox2        = {0, 0, 0, 0};
-	size_t tmp_font_size = getFontSize();
+	unsigned int tmp_font_size = getFontSize();
 	Cursor tmp_cursor    = _cursor;
 	unsigned int fs1     = 10;
 	unsigned int fs2     = 50;
@@ -670,8 +669,8 @@ unsigned int OpenFontRender::calculateFitFontSize(uint32_t limit_width, uint32_t
 	w2 = bbox2.xMax - bbox2.xMin;
 	h2 = bbox2.yMax - bbox2.yMin;
 
-	unsigned int wfs = ((fs2 - fs1) / (w2 - w1 + 0.000001)) * (limit_width - w1) + fs1;
-	unsigned int hfs = ((fs2 - fs1) / (h2 - h1 + 0.000001)) * (limit_height - h1) + fs1;
+	unsigned int wfs = (unsigned int)((fs2 - fs1) / (w2 - w1 + 0.000001)) * (limit_width - w1) + fs1;
+	unsigned int hfs = (unsigned int)((fs2 - fs1) / (h2 - h1 + 0.000001)) * (limit_height - h1) + fs1;
 
 	setFontSize(tmp_font_size);
 	_cursor = tmp_cursor;
@@ -680,24 +679,24 @@ unsigned int OpenFontRender::calculateFitFontSize(uint32_t limit_width, uint32_t
 }
 
 void OpenFontRender::showFreeTypeVersion() {
-	char s[OFR_FT_VERSION_STRING_SIZE] = {0};
+	char s[OpenFontRender::FT_VERSION_STRING_SIZE] = {0};
 	getFreeTypeVersion(s);
 	g_Print(s);
 }
 
 void OpenFontRender::showCredit() {
-	char s[OFR_CREDIT_STRING_SIZE] = {0};
+	char s[OpenFontRender::CREDIT_STRING_SIZE] = {0};
 	getCredit(s);
 	g_Print(s);
 }
 
 void OpenFontRender::getFreeTypeVersion(char *str) {
-	snprintf(str, OFR_FT_VERSION_STRING_SIZE,
+	snprintf(str, OpenFontRender::FT_VERSION_STRING_SIZE,
 	         "FreeType version: %d.%d.%d\n", FREETYPE_MAJOR, FREETYPE_MINOR, FREETYPE_PATCH);
 }
 
 void OpenFontRender::getCredit(char *str) {
-	snprintf(str, OFR_CREDIT_STRING_SIZE,
+	snprintf(str, OpenFontRender::CREDIT_STRING_SIZE,
 	         "Portions of this software are copyright (c) < %d.%d.%d > The FreeTypeProject (www.freetype.org).  All rights reserved.\n",
 	         FREETYPE_MAJOR, FREETYPE_MINOR, FREETYPE_PATCH);
 }
@@ -722,6 +721,10 @@ void OpenFontRender::set_startWrite(std::function<void(void)> user_func) {
 void OpenFontRender::set_endWrite(std::function<void(void)> user_func) {
 	_endWrite = user_func;
 }
+void OpenFontRender::set_printFunc(std::function<void(const char *)> user_func) {
+	// This function is static member method
+	g_Print = user_func;
+}
 
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 //
@@ -743,7 +746,6 @@ FT_Error OpenFontRender::loadFont(enum OFR::LoadFontFrom from) {
 		g_NeedInitialize = false;
 	}
 
-	//_face_id = g_AvailableFaceId++;
 	// 現在の引数は適当
 	error = FTC_Manager_New(g_FtLibrary, _max_faces, _max_sizes, _max_bytes, &ftc_face_requester, &info, &_ftc_manager);
 	if (error) {
@@ -815,8 +817,8 @@ uint32_t OpenFontRender::getFontMaxHeight() {
 
 void OpenFontRender::draw2screen(FT_BitmapGlyph glyph, uint32_t x, uint32_t y, uint16_t fg, uint16_t bg) {
 	_startWrite();
-	for (size_t _y = 0; _y < glyph->bitmap.rows; ++_y) {
-		for (size_t _x = 0; _x < glyph->bitmap.width; ++_x) {
+	for (int32_t _y = 0; _y < glyph->bitmap.rows; ++_y) {
+		for (int32_t _x = 0; _x < glyph->bitmap.width; ++_x) {
 			uint8_t alpha = glyph->bitmap.buffer[_y * glyph->bitmap.pitch + _x];
 			debugPrintf((_debug_level & OFR_DEBUG) ? OFR_RAW : OFR_NONE, "%c", (alpha == 0x00 ? ' ' : 'o'));
 			if (_transparent_background && alpha == 0x00) {
@@ -885,11 +887,11 @@ uint16_t OpenFontRender::alphaBlend(uint8_t alpha, uint16_t fgc, uint16_t bgc) {
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 
 FT_Error ftc_face_requester(FTC_FaceID face_id, FT_Library library, FT_Pointer request_data, FT_Face *aface) {
-	FT_Error error;
+	FT_Error error = FT_Err_Ok;
 	OFR::Face face     = (OFR::Face)face_id;
 	FontDataInfo *info = (FontDataInfo *)request_data;
 
-	debugPrintf((info->debug_level & OFR_INFO), "Font load required. FaceId: %d\n", face_id);
+	debugPrintf((info->debug_level & OFR_INFO), "Font load required. FaceId: 0x%p\n", face_id);
 
 	if (info->from == OFR::FROM_FILE) {
 		debugPrintf((info->debug_level & OFR_INFO), "Load from file.\n");
@@ -985,6 +987,4 @@ void RenderTask(void *pvParameters) {
 //
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 
-void set_printFunc(std::function<void(const char *)> user_func) {
-	g_Print = user_func;
-}
+

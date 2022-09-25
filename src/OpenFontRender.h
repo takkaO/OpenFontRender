@@ -11,7 +11,9 @@
 #ifndef OPEN_FONT_RENDER_H
 #define OPEN_FONT_RENDER_H
 
-#include <Arduino.h>
+#if defined(ARDUINO_BOARD)
+		#include <Arduino.h>
+#endif
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -19,7 +21,6 @@
 #include FT_CACHE_H
 #include FT_FREETYPE_H
 
-#undef min
 #include <functional>
 #include <queue>
 #include <string>
@@ -32,9 +33,6 @@
 //  Constant definition
 //
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
-#define OFR_CACHE_SIZE_NO_LIMIT 0
-#define OFR_FT_VERSION_STRING_SIZE (32)
-#define OFR_CREDIT_STRING_SIZE (128)
 
 enum OFR_DEBUG_LEVEL {
 	OFR_NONE  = 0,
@@ -61,6 +59,7 @@ enum class Drawing {
 };
 
 namespace OFR {
+	/* USER DO NOT USE DIRECTORY IN THIS SCOPE ELEMENTS */
 	enum LoadFontFrom {
 		FROM_FILE,
 		FROM_MEMORY
@@ -76,29 +75,23 @@ namespace OFR {
 
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 //
-//  Output function definition
-//
-/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
-#define setPrintFunc(F) set_printFunc([&](const char *s) { return F(s); })
-
-template <typename T>
-void setSerial(T &output) {
-	set_printFunc([&](const char *s) { return output.print(s); });
-}
-// Direct calls are deprecated.
-void set_printFunc(std::function<void(const char *)> user_func);
-
-/*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
-//
 //  Class definition
 //
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 #define setDrawPixel(F) set_drawPixel([&](int32_t x, int32_t y, uint16_t c) { return F(x, y, c); })
 #define setStartWrite(F) set_startWrite([&](void) { return F(); })
 #define setEndWrite(F) set_endWrite([&](void) { return F(); })
+#define setPrintFunc(F) set_printFunc([&](const char *s) { return F(s); })
 
 class OpenFontRender {
 public:
+	static const unsigned char MAIN_VERSION = 1;
+	static const unsigned char MINER_VERSION = 0;
+
+	static const unsigned char CACHE_SIZE_NO_LIMIT = 0;
+	static const unsigned char FT_VERSION_STRING_SIZE = 32;
+	static const unsigned char CREDIT_STRING_SIZE     = 128;
+
 	OpenFontRender();
 	void setUseRenderTask(bool enable);
 	void setRenderTaskStackSize(unsigned int stack_size);
@@ -189,6 +182,15 @@ public:
 	void set_drawPixel(std::function<void(int32_t, int32_t, uint16_t)> user_func);
 	void set_startWrite(std::function<void(void)> user_func);
 	void set_endWrite(std::function<void(void)> user_func);
+
+
+	/* Static member method */
+	template <typename T>
+	static void setSerial(T &output) {
+		set_printFunc([&](const char *s) { return output.print(s); });
+	}
+	// Direct calls are deprecated.
+	static void set_printFunc(std::function<void(const char *)> user_func);
 
 private:
 	FT_Error loadFont(enum OFR::LoadFontFrom from);
