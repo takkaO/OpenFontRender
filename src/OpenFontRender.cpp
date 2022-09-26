@@ -383,7 +383,7 @@ uint16_t OpenFontRender::drawHString(const char *str,
 			}
 			// Correct slight misalignment of each axis
 			offset.x = bbox.xMin - current_line_position.x;
-			offset.y = bbox.yMin - current_line_position.y;
+			//offset.y = bbox.yMin - current_line_position.y;
 		}
 
 		switch (align) {
@@ -669,8 +669,8 @@ unsigned int OpenFontRender::calculateFitFontSize(uint32_t limit_width, uint32_t
 	w2 = bbox2.xMax - bbox2.xMin;
 	h2 = bbox2.yMax - bbox2.yMin;
 
-	unsigned int wfs = (unsigned int)((fs2 - fs1) / (w2 - w1 + 0.000001)) * (limit_width - w1) + fs1;
-	unsigned int hfs = (unsigned int)((fs2 - fs1) / (h2 - h1 + 0.000001)) * (limit_height - h1) + fs1;
+	unsigned int wfs = (unsigned int)(((fs2 - fs1) / (w2 - w1 + 0.000001)) * (limit_width - w1) + fs1);
+	unsigned int hfs = (unsigned int)(((fs2 - fs1) / (h2 - h1 + 0.000001)) * (limit_height - h1) + fs1);
 
 	setFontSize(tmp_font_size);
 	_cursor = tmp_cursor;
