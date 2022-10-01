@@ -12,7 +12,7 @@
 #define OPEN_FONT_RENDER_H
 
 #if defined(ARDUINO_BOARD)
-		#include <Arduino.h>
+	#include <Arduino.h>
 #endif
 #include <stdarg.h>
 #include <stdio.h>
@@ -85,10 +85,10 @@ namespace OFR {
 
 class OpenFontRender {
 public:
-	static const unsigned char MAIN_VERSION = 1;
+	static const unsigned char MAIN_VERSION  = 1;
 	static const unsigned char MINER_VERSION = 0;
 
-	static const unsigned char CACHE_SIZE_NO_LIMIT = 0;
+	static const unsigned char CACHE_SIZE_NO_LIMIT    = 0;
 	static const unsigned char FT_VERSION_STRING_SIZE = 32;
 	static const unsigned char CREDIT_STRING_SIZE     = 128;
 
@@ -183,7 +183,6 @@ public:
 	void set_startWrite(std::function<void(void)> user_func);
 	void set_endWrite(std::function<void(void)> user_func);
 
-
 	/* Static member method */
 	template <typename T>
 	static void setSerial(T &output) {
@@ -191,6 +190,11 @@ public:
 	}
 	// Direct calls are deprecated.
 	static void set_printFunc(std::function<void(const char *)> user_func);
+
+	struct Cursor {
+		int32_t x;
+		int32_t y;
+	};
 
 private:
 	FT_Error loadFont(enum OFR::LoadFontFrom from);
@@ -207,13 +211,14 @@ private:
 	FTC_Manager _ftc_manager;
 	FTC_CMapCache _ftc_cmap_cache;
 	FTC_ImageCache _ftc_image_cache;
-	// uint8_t _face_id;
+
 	unsigned int _max_faces;
 	unsigned int _max_sizes;
 	unsigned long _max_bytes;
 	bool _transparent_background;
 
 	OFR::FaceRec _face_id;
+	struct Cursor _cursor;
 
 	struct FontParameter {
 		double line_space_ratio;
@@ -223,12 +228,6 @@ private:
 		bool support_vertical;
 	};
 	struct FontParameter _font;
-
-	struct Cursor {
-		int32_t x;
-		int32_t y;
-	};
-	struct Cursor _cursor;
 
 	uint8_t _debug_level;
 };
