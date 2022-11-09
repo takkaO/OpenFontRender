@@ -21,7 +21,7 @@
 #include <SPI.h>
 #include <Seeed_Arduino_FS.h>
 
-#else if defined(ENABLE_M5STACK)
+#elif defined(ENABLE_M5STACK)
 #include <SD.h>
 #include <SPIFFS.h>
 #endif

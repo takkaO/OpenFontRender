@@ -454,6 +454,9 @@ void OpenFontRender::setDebugLevel(uint8_t level) {
 void OpenFontRender::set_drawPixel(std::function<void(int32_t, int32_t, uint16_t)> user_func) {
 	_drawPixel = user_func;
 }
+void OpenFontRender::set_drawFastHLine(std::function<void(int32_t, int32_t, int32_t, uint16_t)> user_func) {
+	_drawFastHLine = user_func;
+}
 void OpenFontRender::set_startWrite(std::function<void(void)> user_func) {
 	_startWrite = user_func;
 }
@@ -469,11 +472,42 @@ void OpenFontRender::set_endWrite(std::function<void(void)> user_func) {
 
 void OpenFontRender::draw2screen(FTC_SBit sbit, uint32_t x, uint32_t y, uint16_t fg, uint16_t bg) {
 	_startWrite();
+  int16_t  fxs = x;
+  uint32_t fl = 0;
+  int16_t  bxs = x;
+  uint32_t bl = 0;
+
 	for (size_t _y = 0; _y < sbit->height; ++_y) {
 		for (size_t _x = 0; _x < sbit->width; ++_x) {
 			uint8_t alpha = sbit->buffer[_y * sbit->pitch + _x];
 			debugPrintf((_debug_level & OFR_DEBUG) ? OFR_RAW : OFR_NONE, "%c", (alpha == 0x00 ? ' ' : 'o'));
-			_drawPixel(_x + x + sbit->left, _y + y - sbit->top, alphaBlend(alpha, fg, bg));
+			//_drawPixel(_x + x + sbit->left, _y + y - sbit->top, alphaBlend(alpha, fg, bg));
+
+      if (alpha)
+      {
+        if (bl) { _drawFastHLine( bxs, _y + y - sbit->top, bl, bg); bl = 0; }
+        if (alpha != 0xFF)
+        {
+          if (fl) {
+            if (fl==1) _drawPixel(fxs, _y + y - sbit->top, fg);
+            else _drawFastHLine( fxs, _y + y - sbit->top, fl, fg);
+            fl = 0;
+          }
+          //drawPixel(x + cx, y + cy, alphaBlend(alpha, fg, bg));
+          _drawPixel(_x + x + sbit->left, _y + y - sbit->top, alphaBlend(alpha, fg, bg));
+        }
+        else
+        {
+          if (fl==0) fxs = _x + x + sbit->left;
+          fl++;
+        }
+      }
+      else
+      {
+        if (fl) { _drawFastHLine( fxs, _y + y - sbit->top, fl, fg); fl = 0; }
+      }
+    if (fl) { _drawFastHLine( fxs, _y + y - sbit->top, fl, fg); fl = 0; }
+    if (bl) { _drawFastHLine( bxs, _y + y - sbit->top, bl, bg); bl = 0; }
 		}
 		debugPrintf((_debug_level & OFR_DEBUG) ? OFR_RAW : OFR_NONE, "\n");
 	}
