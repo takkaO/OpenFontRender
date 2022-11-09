@@ -53,6 +53,11 @@ void setup() {
 	tft.fillScreen(TFT_BLACK);
 	digitalWrite(LCD_BACKLIGHT, HIGH); // turn on the backlight
 
+	// print library version
+	Serial.printf("OpenFontRender Library version: %d.%d\n",
+	              OpenFontRender::MAIN_VERSION, 
+	              OpenFontRender::MINER_VERSION);
+
 	render.showFreeTypeVersion(); // print FreeType version
 	render.showCredit();		  // print FTL credit
 
@@ -98,6 +103,11 @@ void setup() {
 	// put your setup code here, to run once:
 	M5.begin();
 	M5.Lcd.fillScreen(BLACK);
+
+	// print library version
+	Serial.printf("OpenFontRender Library version: %d.%d\n",
+	              OpenFontRender::MAIN_VERSION, 
+	              OpenFontRender::MINER_VERSION);
 
 	render.showFreeTypeVersion(); // print FreeType version
 	render.showCredit();		  // print FTL credit
@@ -150,12 +160,13 @@ render.setStartWrite(my_start_write_function); // 任意
 render.setEndWrite(my_end_write_function);     // 任意
 ```
 
+描画用のオブジェクトがあり、必要なメソッドを含んでいる場合は ```setDrawer``` を利用することも出来ます。
 より詳しい説明は [API.md](/doc/API.md) をご覧ください。
 
 ## FreeType のバージョンを変更する
 
 このライブラリでは、どの FreeType バージョンにも切り替えることができます。  
-2.4.12 と 2.11.0 で動作することを確認しています。  
+2.4.12 と 2.12.1 で動作することを確認しています。  
 デフォルトのバージョンは 2.4.12 ですが、これは最も安定して動作していたバージョンだったからです。
 
 ### 変更方法
@@ -176,9 +187,15 @@ FreeRTOS を使用している場合、バージョンによっては不安定�
 本ライブラリは，以下のハードウェアで動作確認をしています。  
 ここに掲載されていないハードウェアでの報告もお待ちしております。
 
-- Wio Terminal
-- M5Stack Basic
-- M5Stack Core2
+- Arduino IDE 2.0
+  - Seeed SAMD Boards (Board Manager v1.8.3)
+    - Wio Terminal
+  - M5Stack (Board Manager v2.0.4)
+    - M5Stack Basic (Library v0.1.4)
+    - M5Stack Core2 (Library v0.4.0)
+- PlatformIO
+  - M5Stack Basic (Library v2.0.4)
+  - M5Stack Core2 (Library v2.0.4)
 
 ### 描画速度
 
@@ -231,6 +248,15 @@ FTL ライセンスの詳細については，このリポジトリの [doc/FTL.
 - [freetype2 - example1.c](https://www.freetype.org/freetype2/docs/tutorial/example1.c)
 - [FreeType2でフォントテクスチャ作る際のコツ。ピクセルサイズで作るのと文字送り量の取得 - GameProgrammar's Night](https://katze.hatenablog.jp/entry/2013/07/16/232911)
 - [FreeTypeのベースラインあわせでかなりハマッタのでメモ - くそにそてくにっく](https://niso1985.hatenadiary.org/entry/20090907/1252339660)
+- [【C++/MinGW】FreeTypeを使ってTTFファイルから文字レンダリング - とある科学の備忘録](https://shizenkarasuzon.hatenablog.com/entry/2020/10/30/181607)
+- [OpenGLでFreeTypeを使って文字列を描画してみた２。(FreeTypeキャッシュ編)](https://gist.github.com/rg687076/76d4ddac2a8628066f201391f9a4489d)
+- [FreeType を使って文字を描画する - インゲージ開発者ブログ](https://blog.ingage.jp/entry/2022/03/24/080000)
+- [[Font][Freetype]26.6 fractional pixel formatってなぁに？　にお答えしますね – あおいろヨゾラ](https://www.nagatsuki-do.net/2014/05/18/fontfreetype26-6-fractional-pixel-format%E3%81%A3%E3%81%A6%E3%81%AA%E3%81%81%E3%81%AB%EF%BC%9F%E3%80%80%E3%81%AB%E3%81%8A%E7%AD%94%E3%81%88%E3%81%97%E3%81%BE%E3%81%99%E3%81%AD/)
+- [freetype - How to get height of font in Freetype2 - Stack Overflow](https://stackoverflow.com/questions/50373457/how-to-get-height-of-font-in-freetype2)
+- [True type fontのレンダリング　その7 - 忘備録-備忘録](https://blog.goo.ne.jp/lm324/e/457cf90b1c4267e1d49ed0881369b303)
+- [FreeType-2.4.7 API Reference](https://opensource.apple.com/source/X11proto/X11proto-57.2/freetype/freetype-2.4.7/docs/reference/ft2-base_interface.html#FT_Open_Face)
+- [The FreeType Caching Sub-System](http://www.fifi.org/doc/libfreetype6/cache.html)
+- [freetype 2.8.1 | DirectAdmin Forums](https://forum.directadmin.com/threads/freetype-2-8-1.55304/)
 
 ### その他
 
