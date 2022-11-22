@@ -174,12 +174,14 @@ public:
 	template <typename T>
 	void setDrawer(T &drawer) {
 		set_drawPixel([&](int32_t x, int32_t y, uint16_t c) { return drawer.drawPixel(x, y, c); });
+		set_drawFastHLine([&](int32_t x, int32_t y, int32_t w, uint16_t c) { return drawer.drawFastHLine(x, y, w, c); });
 		set_startWrite([&](void) { return drawer.startWrite(); });
 		set_endWrite([&](void) { return drawer.endWrite(); });
 	}
 
 	// Direct calls are deprecated.
 	void set_drawPixel(std::function<void(int32_t, int32_t, uint16_t)> user_func);
+	void set_drawFastHLine(std::function<void(int32_t, int32_t, int32_t, uint16_t)> user_func);
 	void set_startWrite(std::function<void(void)> user_func);
 	void set_endWrite(std::function<void(void)> user_func);
 
@@ -205,6 +207,7 @@ private:
 	uint16_t alphaBlend(uint8_t alpha, uint16_t fgc, uint16_t bgc);
 
 	std::function<void(int32_t, int32_t, uint16_t)> _drawPixel;
+	std::function<void(int32_t, int32_t, int32_t, uint16_t)> _drawFastHLine;
 	std::function<void(void)> _startWrite;
 	std::function<void(void)> _endWrite;
 

@@ -50,7 +50,7 @@
 #define TT_NEXT_LONG    FT_NEXT_LONG
 #define TT_NEXT_ULONG   FT_NEXT_ULONG
 
-
+/*
   FT_CALLBACK_DEF( FT_Error )
   tt_cmap_init( TT_CMap   cmap,
                 FT_Byte*  table )
@@ -58,7 +58,7 @@
     cmap->data = table;
     return FT_Err_Ok;
   }
-
+*/
 
   /*************************************************************************/
   /*************************************************************************/
