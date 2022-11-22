@@ -220,8 +220,7 @@ void OpenFontRender::setCacheSize(unsigned int max_faces, unsigned int max_sizes
 
 FT_Error OpenFontRender::loadFont(const unsigned char *data, size_t size, uint8_t target_face_index) {
 	_face_id.data_size = size;
-	_face_id.data      = new unsigned char[size];
-	memcpy(_face_id.data, data, size);
+	_face_id.data      = (unsigned char *)data;
 
 	_face_id.face_index = target_face_index;
 	return loadFont(OFR::FROM_MEMORY);
