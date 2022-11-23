@@ -24,7 +24,7 @@ echo -e "# This file was automatically created by \"Export_CMakeLists\" script.\
 echo "Processing search C/C++ source files"
 lst=$(find "./src" -type f -name "*.c" -or -name "*.cpp")
 
-echo "set(src " >> CMakeLists.txt
+echo "set(srcs " >> CMakeLists.txt
 for f in $lst; do
     # Space for indent
     echo "    "\"$f\" >> CMakeLists.txt

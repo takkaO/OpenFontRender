@@ -23,7 +23,7 @@ Write-Host "Processing search C/C++ source files"
 $lst = Get-ChildItem -Path "./src" -File -Recurse -Include *.c,*.cpp | Resolve-Path -Relative
 $lst = $lst -replace '\\', "/"
 
-Write-Output "set(src " | Add-Content CMakeLists.txt
+Write-Output "set(srcs " | Add-Content CMakeLists.txt
 foreach ($f in $lst) {
     # Space for indent
     Write-Output "    `"$($f)`"" | Add-Content CMakeLists.txt

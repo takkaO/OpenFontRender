@@ -1,6 +1,6 @@
 # This file was automatically created by "Export_CMakeLists" script.
 
-set(src 
+set(srcs 
     "./src/base/basepic.c"
     "./src/base/ftadvanc.c"
     "./src/base/ftapi.c"
@@ -77,7 +77,6 @@ set(src
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS
                        "./src"
-                       "./src/.vscode"
                        "./src/base"
                        "./src/cache"
                        "./src/freetype"
