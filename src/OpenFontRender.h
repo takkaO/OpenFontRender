@@ -11,9 +11,12 @@
 #ifndef OPEN_FONT_RENDER_H
 #define OPEN_FONT_RENDER_H
 
-#if defined(ARDUINO_BOARD)
+#if defined(ARDUINO)
 	#include <Arduino.h>
+	#undef min
+	#undef max
 #endif
+
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -24,6 +27,7 @@
 #include <functional>
 #include <queue>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "FileSupport.h"
@@ -79,6 +83,7 @@ namespace OFR {
 //
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 #define setDrawPixel(F) set_drawPixel([&](int32_t x, int32_t y, uint16_t c) { return F(x, y, c); })
+#define setDrawFastHLine(F) set_drawFastHLine([&](int32_t x, int32_t y, int32_t w, uint16_t c) { return F(x, y, w, c); })
 #define setStartWrite(F) set_startWrite([&](void) { return F(); })
 #define setEndWrite(F) set_endWrite([&](void) { return F(); })
 #define setPrintFunc(F) set_printFunc([&](const char *s) { return F(s); })
@@ -109,13 +114,14 @@ public:
 	                  uint8_t bg,
 	                  uint8_t bb);
 	void setBackgroundColor(uint16_t font_bgcolor);
-	void setTransparentBackground(bool enable);
 	uint16_t getFontColor();
 	uint16_t getBackgroundColor();
 	void setFontSize(unsigned int pixel);
 	unsigned int getFontSize();
 	double setLineSpaceRatio(double line_space_ratio);
 	double getLineSpaceRatio();
+	void setLayout(Layout layout);
+	Layout getLayout();
 	void setCacheSize(unsigned int max_faces, unsigned int max_sizes, unsigned long max_bytes);
 
 	FT_Error loadFont(const unsigned char *data, size_t size, uint8_t target_face_index = 0);
@@ -162,6 +168,10 @@ public:
 
 	FT_BBox calculateBoundingBoxFmt(int32_t x, int32_t y, unsigned int font_size, Align align, Layout layout, const char *fmt, ...);
 	FT_BBox calculateBoundingBox(int32_t x, int32_t y, unsigned int font_size, Align align, Layout layout, const char *str);
+
+	uint32_t getTextWidth(const char *fmt, ...);
+	uint32_t getTextHeight(const char *fmt, ...);
+
 	unsigned int calculateFitFontSizeFmt(uint32_t limit_width, uint32_t limit_height, Layout layout, const char *fmt, ...);
 	unsigned int calculateFitFontSize(uint32_t limit_width, uint32_t limit_height, Layout layout, const char *str);
 
@@ -211,6 +221,8 @@ private:
 	std::function<void(void)> _startWrite;
 	std::function<void(void)> _endWrite;
 
+	bool _enable_optimized_drawing;
+
 	FTC_Manager _ftc_manager;
 	FTC_CMapCache _ftc_cmap_cache;
 	FTC_ImageCache _ftc_image_cache;
@@ -218,7 +230,6 @@ private:
 	unsigned int _max_faces;
 	unsigned int _max_sizes;
 	unsigned long _max_bytes;
-	bool _transparent_background;
 
 	OFR::FaceRec _face_id;
 	struct Cursor _cursor;
@@ -231,6 +242,8 @@ private:
 		bool support_vertical;
 	};
 	struct FontParameter _font;
+
+	Layout _layout;
 
 	uint8_t _debug_level;
 };

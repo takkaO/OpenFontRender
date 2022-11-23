@@ -140,8 +140,8 @@ void loop() {
 ## TTFをプログラムに埋め込む方法
 
 バイナリTTFフォントファイルを作成するために、toolsディレクトリにある[binary2ttf.py](/tools/ttf2bin/ttf2bin.py)を使用します。  
-この```binary2ttf.py```は、[M5EPD](https://github.com/m5stack/M5EPD/tree/main/tools/ttf2bin)ライブラリで提供されています。  
-同じプログラムが、このリポジトリの ```tools``` ディレクトリに含まれています。   
+この `binary2ttf.py` は、[M5EPD](https://github.com/m5stack/M5EPD/tree/main/tools/ttf2bin)ライブラリで提供されています。  
+同じプログラムが、このリポジトリの `tools` ディレクトリに含まれています。   
 以下のコマンドを実行するだけです。
 
 ```sh
@@ -156,11 +156,12 @@ python3 binary2ttf.py your_font_file.ttf
 ```c++
 render.setDrawPixel(my_draw_function);         // 必須
 
+render.setDrawFastHLine(my_draw_fast_h_line);  // 任意
 render.setStartWrite(my_start_write_function); // 任意
 render.setEndWrite(my_end_write_function);     // 任意
 ```
 
-描画用のオブジェクトがあり、必要なメソッドを含んでいる場合は ```setDrawer``` を利用することも出来ます。
+描画用のオブジェクトがあり、必要なメソッドを含んでいる場合は `setDrawer` を利用することも出来ます。
 より詳しい説明は [API.md](/doc/API.md) をご覧ください。
 
 ## FreeType のバージョンを変更する
@@ -173,12 +174,12 @@ render.setEndWrite(my_end_write_function);     // 任意
 
 1. お好きな FreeType のバージョンをダウンロードしてください。
 2. ダウンロードした FreeType フォルダを OpenFontRender の直下に置きます。
-3. ```AutoRun``` スクリプトを実行します。
+3. `AutoRun` スクリプトを実行します。
 
 ### 備考
 
 FreeRTOS を使用している場合、バージョンによっては不安定になることがあります。  
-スタックサイズを大きくしたり、```useRenderTask``` を有効にしないと動作しない場合があります。
+スタックサイズを大きくしたり、`useRenderTask` を有効にしないと動作しない場合があります。
 
 ## 動作検証
 
@@ -196,6 +197,8 @@ FreeRTOS を使用している場合、バージョンによっては不安定�
 - PlatformIO
   - M5Stack Basic (Library v2.0.4)
   - M5Stack Core2 (Library v2.0.4)
+- ESP-IDF (4.4)
+  - M5Stack Basic
 
 ### 描画速度
 

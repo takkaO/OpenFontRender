@@ -7,7 +7,8 @@ getCursorX	KEYWORD2
 getCursorY	KEYWORD2
 seekCursor	KEYWORD2
 
-setTransparentBackground	KEYWORD2
+setLayout	KEYWORD2
+getLayout	KEYWORD2
 
 setFontColor	KEYWORD2
 getFontColor	KEYWORD2
@@ -37,6 +38,11 @@ cprintf	KEYWORD2
 rprintf	KEYWORD2
 
 calculateBoundingBoxFmt	KEYWORD2
+calculateBoundingBox	KEYWORD2
+
+getTextWidth  KEYWORD2
+getTextHeight KEYWORD2
+
 calculateFitFontSizeFmt	KEYWORD2
 calculateFitFontSize	KEYWORD2
 
