@@ -71,8 +71,8 @@ void RenderTask(void *pvParameters);
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 
 FT_Library g_FtLibrary;
-bool g_NeedInitialize = true;
-std::function<void(const char *)> g_Print;
+bool g_NeedInitialize                     = true;
+std::function<void(const char *)> g_Print = [](const char *s) { return; };
 
 #ifdef FREERTOS_CONFIG_H
 TaskHandle_t g_RenderTaskHandle                   = NULL;
@@ -89,16 +89,8 @@ RenderTaskParameter g_TaskParameter;
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 
 OpenFontRender::OpenFontRender() {
-	g_Print = [](const char *s) {
-#if defined(ARDUINO)
-		Serial.print(s);
-#else
-		return;
-#endif
-	};
-
 	// TODO: Automatic support some micro computers
-	_drawPixel = [](int x, int y, int c) {
+	_drawPixel = [](int32_t x, int32_t y, uint16_t c) {
 		static bool flag = true;
 		if (flag) {
 			g_Print("\n** [Warning] Please set drawPixel() using setDrawPixel(). **\n");
@@ -106,8 +98,9 @@ OpenFontRender::OpenFontRender() {
 		}
 		return;
 	};
-	_startWrite = []() { return; };
-	_endWrite   = []() { return; };
+	_drawFastHLine = [](int32_t x, int32_t y, int32_t w, uint16_t c) { return; };
+	_startWrite    = []() { return; };
+	_endWrite      = []() { return; };
 
 	_max_faces = OpenFontRender::CACHE_SIZE_NO_LIMIT;
 	_max_sizes = OpenFontRender::CACHE_SIZE_NO_LIMIT;

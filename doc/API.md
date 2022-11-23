@@ -387,6 +387,50 @@ Obtains the enclosing rectangle of a string when drawn under the specified condi
 ---
 
 ```c++
+uint32_t getTextWidth(const char *fmt, ...)
+```
+
+### Summary
+
+Calculate text width.
+
+### Arguments
+
+| Type          | Name | Description   |
+| ------------- | :--: | ------------- |
+| const char \* | fmt  | Format string |
+
+### Return
+
+| Type     | Description |
+| -------- | ----------- |
+| uint32_t | Text width. |
+
+---
+
+```c++
+uint32_t getTextHeight(const char *fmt, ...)
+```
+
+### Summary
+
+Calculate text height.
+
+### Arguments
+
+| Type          | Name | Description   |
+| ------------- | :--: | ------------- |
+| const char \* | fmt  | Format string |
+
+### Return
+
+| Type     | Description  |
+| -------- | ------------ |
+| uint32_t | Text height. |
+
+---
+
+```c++
 unsigned int calculateFitFontSizeFmt(uint32_t limit_width,
                                      uint32_t limit_height,
                                      Layout layout,
@@ -487,6 +531,42 @@ void example_function (int32_t x, int32_t y, uint16_t c)
 ---
 
 ```c++
+void setDrawFastHLine(Function f)
+```
+
+### Summary
+
+Set the function for drawing on the LCD.
+If you set this function, drawing method will be optimized and improve speed.
+
+### Arguments
+
+| Type     | Name | Description               |
+| -------- | :--: | ------------------------- |
+| Function |  f   | Draw fast h line function |
+
+### Return
+
+None
+
+### Note
+
+The function to be given must be a function like the one below that takes a specific argument.
+
+```c++
+void example_function (int32_t x, int32_t y, int32_t w, uint16_t c)
+```
+
+| Type    | Name | Description               |
+| ------- | :--: | ------------------------- |
+| int32_t |  x   | Draw position X           |
+| int32_t |  y   | Draw position Y           |
+| int32_t |  w   | Draw Length               |
+| int32_t |  c   | Draw color (16 bit color) |
+
+---
+
+```c++
 void setStartWrite(Function f)
 ```
 
@@ -569,6 +649,7 @@ Inside the function, the following process takes place.
 ```c++
 template <typename T> void setDrawer(T &drawer) {
     setDrawPixel(drawer.drawPixel);
+    setDrawFastHLine(drawer.drawFastHLine);
     setStartWrite(drawer.startWrite);
     setEndWrite(drawer.endWrite);
 }
@@ -841,23 +922,43 @@ None
 ---
 
 ```c++
-void setTransparentBackground(bool enable)
+void setLayout(Layout layout)
 ```
 
 ### Summary
 
-The text background is transparent (i.e., not drawn).
-However, if the background colors do not match, an incongruity may appear near the text border.
+Set the text layout.  
+It is used when drawing with the `printf` function.
 
 ### Arguments
 
-| Type |  Name  | Description                      |
-| ---- | :----: | -------------------------------- |
-| bool | enable | True is enable. Default is False |
+| Type   |  Name  | Description                                |
+| ------ | :----: | ------------------------------------------ |
+| Layout | layout | `Layout::Horizontal` or `Layout::Vertical` |
 
 ### Return
 
 None
+
+---
+
+```c++
+void getLayout()
+```
+
+### Summary
+
+Get the current text layout.
+
+### Arguments
+
+None
+
+### Return
+
+| Type   | Description                                |
+| ------ | ------------------------------------------ |
+| Layout | `Layout::Horizontal` or `Layout::Vertical` |
 
 ---
 
