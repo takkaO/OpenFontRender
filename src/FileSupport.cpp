@@ -10,7 +10,7 @@
 
 #include "FileSupport.h"
 
-#if defined(ARDUINO_WIO_TERMINAL) || defined(ENABLE_M5STACK)
+#if defined(ARDUINO_WIO_TERMINAL) || defined(ARDUINO_M5_SERIES)
 
 std::list<fileclass_t> f_list;
 fs::FS &fontFS = SD;
@@ -21,7 +21,7 @@ void ffsupport_setffs(fs::FS &ffs) {
 
 fileclass_t *ffsupport_fopen(const char *Filename, const char *mode) {
 	fileclass_t fileclass;
-#if defined(ARDUINO_WIO_TERMINAL)
+	#if defined(ARDUINO_WIO_TERMINAL)
 	// For WioTerminal
 	if (strcmp(mode, "r") == 0) {
 		fileclass._fstream = fontFS.open(Filename, FA_READ);
@@ -42,10 +42,10 @@ fileclass_t *ffsupport_fopen(const char *Filename, const char *mode) {
 	} else {
 		fileclass._fstream = fontFS.open(Filename, FA_READ);
 	}
-#else
+	#else
 	// For M5Stack and others
 	fileclass._fstream = fontFS.open(Filename, mode);
-#endif
+	#endif
 
 	f_list.push_back(fileclass);
 	return &f_list.back();

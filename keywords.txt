@@ -1,0 +1,59 @@
+# OpenFontRender library
+
+OpenFontRender	KEYWORD1
+
+setCursor	KEYWORD2
+getCursorX	KEYWORD2
+getCursorY	KEYWORD2
+seekCursor	KEYWORD2
+
+setLayout	KEYWORD2
+getLayout	KEYWORD2
+
+setFontColor	KEYWORD2
+getFontColor	KEYWORD2
+
+setBackgroundColor	KEYWORD2
+getBackgroundColor	KEYWORD2
+
+setFontSize	KEYWORD2
+getFontSize	KEYWORD2
+
+setLineSpaceRatio	KEYWORD2
+getLineSpaceRatio	KEYWORD2
+
+setCacheSize	KEYWORD2
+
+loadFont	KEYWORD2
+unloadFont	KEYWORD2
+
+drawChar	KEYWORD2
+drawHString	KEYWORD2
+drawString	KEYWORD2
+cdrawString	KEYWORD2
+rdrawString	KEYWORD2
+
+printf	KEYWORD2
+cprintf	KEYWORD2
+rprintf	KEYWORD2
+
+calculateBoundingBoxFmt	KEYWORD2
+calculateBoundingBox	KEYWORD2
+
+getTextWidth  KEYWORD2
+getTextHeight KEYWORD2
+
+calculateFitFontSizeFmt	KEYWORD2
+calculateFitFontSize	KEYWORD2
+
+showFreeTypeVersion	KEYWORD2
+getFreeTypeVersion	KEYWORD2
+
+showCredit	KEYWORD2
+getCredit	KEYWORD2
+
+setUseRenderTask	KEYWORD2
+setRenderTaskStackSize	KEYWORD2
+
+setDebugLevel	KEYWORD2
+setSerial	KEYWORD2

@@ -12,8 +12,9 @@ void setup()
 {
 	// put your setup code here, to run once:
 	M5.begin();
-	M5.Lcd.fillScreen(BLACK);
+	M5.Lcd.fillScreen(TFT_BLACK);
 
+	render.setSerial(Serial);	  // Need to print render library message
 	render.showFreeTypeVersion(); // print FreeType version
 	render.showCredit();		  // print FTL credit
 
@@ -26,22 +27,23 @@ void setup()
 	render.setDrawer(M5.Lcd); // Set drawer object
 	/* You can also be written as follows. */
 	// render.setDrawPixel(M5.Lcd.drawPixel);
-	// render.setStartWrite(M5.Lcd.startWrite); // optional
-	// render.setEndWrite(M5.Lcd.endWrite);	 // optional
+	// render.setDrawFastHLine(M5.Lcd.drawFastHLine); // optional
+	// render.setStartWrite(M5.Lcd.startWrite);       // optional
+	// render.setEndWrite(M5.Lcd.endWrite);           // optional
 
 	unsigned long t_start = millis();
-	
-	render.setFontColor(WHITE);
+
+	render.setFontColor(TFT_WHITE);
 	render.printf("Hello World\n");
 	render.seekCursor(0, 10);
 
 	render.setFontSize(30);
-	render.setFontColor(GREEN);
+	render.setFontColor(TFT_GREEN);
 	render.printf("完全なUnicodeサポート\n");
 	render.seekCursor(0, 10);
-	
+
 	render.setFontSize(40);
-	render.setFontColor(ORANGE);
+	render.setFontColor(TFT_ORANGE);
 	render.printf("こんにちは世界\n");
 
 	unsigned long t_end = millis();

@@ -79,26 +79,28 @@ None
 ---
 
 ```c++
-FT_Error drawChar(uint16_t unicode,
+FT_Error drawChar(char character,
                   uint32_t x  = 0,
                   uint32_t y  = 0,
                   uint16_t fg = 0xFFFF,
-                  uint16_t bg = 0x0000)
+                  uint16_t bg = 0x0000,
+                  Align align = Align::Left)
 ```
 
 ### Summary
 
-Draws a single character specified in Unicode.
+Draws a single character.
 
 ### Arguments
 
-| Type     |  Name   | Description                            |
-| -------- | :-----: | -------------------------------------- |
-| uint16_t | unicode | Unicode number                         |
-| uint32_t |    x    | Top-left X coordinate to start drawing |
-| uint32_t |    y    | Top-left Y coordinate to start drawing |
-| uint32_t |   fg    | Font color (16bit color)               |
-| uint32_t |   bg    | Font background color (16bit color)    |
+| Type     |   Name    | Description                            |
+| -------- | :-------: | -------------------------------------- |
+| char     | character | Character to draw                      |
+| uint32_t |     x     | Top-left X coordinate to start drawing |
+| uint32_t |     y     | Top-left Y coordinate to start drawing |
+| uint32_t |    fg     | Font color (16bit color)               |
+| uint32_t |    bg     | Font background color (16bit color)    |
+| Align    |   align   | Alignment of character                 |
 
 ### Return
 
@@ -109,26 +111,34 @@ Draws a single character specified in Unicode.
 ---
 
 ```c++
-uint16_t drawString(const char *str,
-                    uint32_t x  = 0,
-                    uint32_t y  = 0,
-                    uint16_t fg = 0xFFFF,
-                    uint16_t bg = 0x0000)
+uint16_t drawHString(const char *str,
+                    uint32_t x,
+                    uint32_t y,
+                    uint16_t fg,
+                    uint16_t bg,
+                    Align align,
+                    Drawing drawing,
+                    FT_BBox &abbox,
+                    FT_Error &error)
 ```
 
 ### Summary
 
-Draws the specified string.
+Draw strings horizontally.
 
 ### Arguments
 
-| Type          | Name | Description                            |
-| ------------- | :--: | -------------------------------------- |
-| const char \* | str  | String to draw                         |
-| uint32_t      |  x   | Top-left X coordinate to start drawing |
-| uint32_t      |  y   | Top-left Y coordinate to start drawing |
-| uint32_t      |  fg  | Font color (16bit color)               |
-| uint32_t      |  bg  | Font background color (16bit color)    |
+| Type          |  Name   | Description                                                |
+| ------------- | :-----: | ---------------------------------------------------------- |
+| const char \* |   str   | String to draw                                             |
+| uint32_t      |    x    | Top-left X coordinate to start drawing                     |
+| uint32_t      |    y    | Top-left Y coordinate to start drawing                     |
+| uint32_t      |   fg    | Font color (16bit color)                                   |
+| uint32_t      |   bg    | Font background color (16bit color)                        |
+| Align         |  align  | Alignment of strings                                       |
+| Drawing       | drawing | Whether to draw or not                                     |
+| FT_BBox       | &abbox  | (output) Smallest rectangle that encloses the drawn string |
+| FT_Error      | &error  | (output) FreeType error code. 0 is success                 |
 
 ### Return
 
@@ -140,33 +150,109 @@ Draws the specified string.
 
 ```c++
 uint16_t drawString(const char *str,
-                    uint32_t x,
-                    uint32_t y,
-                    uint16_t fg,
-                    uint16_t bg,
-                    FT_Error *error)
+                    uint32_t x  = 0,
+                    uint32_t y  = 0,
+                    uint16_t fg = 0xFFFF,
+                    uint16_t bg = 0x0000,
+                    Layout layout = Layout::Horizontal)
 ```
 
 ### Summary
 
-Draws the specified string.
+Draws the specified string left-aligned.
 
 ### Arguments
 
-| Type          | Name  | Description                            |
-| ------------- | :---: | -------------------------------------- |
-| const char \* |  str  | String to draw                         |
-| uint32_t      |   x   | Top-left X coordinate to start drawing |
-| uint32_t      |   y   | Top-left Y coordinate to start drawing |
-| uint32_t      |  fg   | Font color (16bit color)               |
-| uint32_t      |  bg   | Font background color (16bit color)    |
-| FT_Error\*    | error | FreeType error code. 0 is success.     |
+| Type          |  Name  | Description                                              |
+| ------------- | :----: | -------------------------------------------------------- |
+| const char \* |  str   | String to draw                                           |
+| uint32_t      |   x    | Top-left X coordinate to start drawing                   |
+| uint32_t      |   y    | Top-left Y coordinate to start drawing                   |
+| uint32_t      |   fg   | Font color (16bit color)                                 |
+| uint32_t      |   bg   | Font background color (16bit color)                      |
+| Layout        | layout | String drawing direction (Vertical is NOT supported now) |
 
 ### Return
 
 | Type     | Description                            |
 | -------- | -------------------------------------- |
 | uint16_t | Number of characters success to write. |
+
+### Note
+
+Vertical writing is currently not supported, but is available for future expansion.
+
+---
+
+```c++
+uint16_t cdrawString(const char *str,
+                    uint32_t x  = 0,
+                    uint32_t y  = 0,
+                    uint16_t fg = 0xFFFF,
+                    uint16_t bg = 0x0000,
+                    Layout layout = Layout::Horizontal)
+```
+
+### Summary
+
+Draws the specified string centered.
+
+### Arguments
+
+| Type          |  Name  | Description                                              |
+| ------------- | :----: | -------------------------------------------------------- |
+| const char \* |  str   | String to draw                                           |
+| uint32_t      |   x    | Top-center X coordinate to start drawing                 |
+| uint32_t      |   y    | Top-center Y coordinate to start drawing                 |
+| uint32_t      |   fg   | Font color (16bit color)                                 |
+| uint32_t      |   bg   | Font background color (16bit color)                      |
+| Layout        | layout | String drawing direction (Vertical is NOT supported now) |
+
+### Return
+
+| Type     | Description                            |
+| -------- | -------------------------------------- |
+| uint16_t | Number of characters success to write. |
+
+### Note
+
+Vertical writing is currently not supported, but is available for future expansion.
+
+---
+
+```c++
+uint16_t rdrawString(const char *str,
+                    uint32_t x  = 0,
+                    uint32_t y  = 0,
+                    uint16_t fg = 0xFFFF,
+                    uint16_t bg = 0x0000,
+                    Layout layout = Layout::Horizontal)
+```
+
+### Summary
+
+Draws the specified string right-aligned.
+
+### Arguments
+
+| Type          |  Name  | Description                                              |
+| ------------- | :----: | -------------------------------------------------------- |
+| const char \* |  str   | String to draw                                           |
+| uint32_t      |   x    | Top-right X coordinate to start drawing                  |
+| uint32_t      |   y    | Top-right Y coordinate to start drawing                  |
+| uint32_t      |   fg   | Font color (16bit color)                                 |
+| uint32_t      |   bg   | Font background color (16bit color)                      |
+| Layout        | layout | String drawing direction (Vertical is NOT supported now) |
+
+### Return
+
+| Type     | Description                            |
+| -------- | -------------------------------------- |
+| uint16_t | Number of characters success to write. |
+
+### Note
+
+Vertical writing is currently not supported, but is available for future expansion.
 
 ---
 
@@ -176,7 +262,7 @@ uint16_t printf(const char *fmt, ...)
 
 ### Summary
 
-Draws the specified format string.
+Draws the specified format string left-aligned.
 
 ### Arguments
 
@@ -189,6 +275,224 @@ Draws the specified format string.
 | Type     | Description                            |
 | -------- | -------------------------------------- |
 | uint16_t | Number of characters success to write. |
+
+---
+
+```c++
+uint16_t cprintf(const char *fmt, ...)
+```
+
+### Summary
+
+Draws the specified format string centered.
+
+### Arguments
+
+| Type          | Name | Description   |
+| ------------- | :--: | ------------- |
+| const char \* | fmt  | Format string |
+
+### Return
+
+| Type     | Description                            |
+| -------- | -------------------------------------- |
+| uint16_t | Number of characters success to write. |
+
+---
+
+```c++
+uint16_t rprintf(const char *fmt, ...)
+```
+
+### Summary
+
+Draws the specified format string right-aligned.
+
+### Arguments
+
+| Type          | Name | Description   |
+| ------------- | :--: | ------------- |
+| const char \* | fmt  | Format string |
+
+### Return
+
+| Type     | Description                            |
+| -------- | -------------------------------------- |
+| uint16_t | Number of characters success to write. |
+
+---
+
+```c++
+FT_BBox calculateBoundingBoxFmt(int32_t x,
+                                 int32_t y,
+                                 unsigned int font_size,
+                                 Align align,
+                                 Layout layout,
+                                 const char *fmt, ...)
+```
+
+### Summary
+
+Obtains the enclosing rectangle of a string when drawn under the specified conditions.
+
+### Arguments
+
+| Type          |   Name    | Description                                              |
+| ------------- | :-------: | -------------------------------------------------------- |
+| int32_t       |     x     | X coordinate to start drawing                            |
+| int32_t       |     y     | Y coordinate to start drawing                            |
+| unsigned int  | font_size | Drawing font size                                        |
+| Align         |   align   | Alignment of strings                                     |
+| Layout        |  layout   | String drawing direction (Vertical is NOT supported now) |
+| const char \* |    fmt    | Format string                                            |
+
+### Return
+
+| Type    | Description                                        |
+| ------- | -------------------------------------------------- |
+| FT_BBox | Smallest rectangle that encloses the drawn string. |
+
+---
+
+```c++
+FT_BBox calculateBoundingBox(int32_t x,
+                                 int32_t y,
+                                 unsigned int font_size,
+                                 Align align,
+                                 Layout layout,
+                                 const char *str)
+```
+
+### Summary
+
+Obtains the enclosing rectangle of a string when drawn under the specified conditions.
+
+### Arguments
+
+| Type          |   Name    | Description                                              |
+| ------------- | :-------: | -------------------------------------------------------- |
+| int32_t       |     x     | X coordinate to start drawing                            |
+| int32_t       |     y     | Y coordinate to start drawing                            |
+| unsigned int  | font_size | Drawing font size                                        |
+| Align         |   align   | Alignment of strings                                     |
+| Layout        |  layout   | String drawing direction (Vertical is NOT supported now) |
+| const char \* |    str    | Drawing string                                           |
+
+### Return
+
+| Type    | Description                                        |
+| ------- | -------------------------------------------------- |
+| FT_BBox | Smallest rectangle that encloses the drawn string. |
+
+---
+
+```c++
+uint32_t getTextWidth(const char *fmt, ...)
+```
+
+### Summary
+
+Calculate text width.
+
+### Arguments
+
+| Type          | Name | Description   |
+| ------------- | :--: | ------------- |
+| const char \* | fmt  | Format string |
+
+### Return
+
+| Type     | Description |
+| -------- | ----------- |
+| uint32_t | Text width. |
+
+---
+
+```c++
+uint32_t getTextHeight(const char *fmt, ...)
+```
+
+### Summary
+
+Calculate text height.
+
+### Arguments
+
+| Type          | Name | Description   |
+| ------------- | :--: | ------------- |
+| const char \* | fmt  | Format string |
+
+### Return
+
+| Type     | Description  |
+| -------- | ------------ |
+| uint32_t | Text height. |
+
+---
+
+```c++
+unsigned int calculateFitFontSizeFmt(uint32_t limit_width,
+                                     uint32_t limit_height,
+                                     Layout layout,
+                                     const char *fmt, ...)
+```
+
+### Summary
+
+Calculates the maximum font size that will fit in the specified rectangle.
+
+### Arguments
+
+| Type          |     Name     | Description                                              |
+| ------------- | :----------: | -------------------------------------------------------- |
+| uint32_t      | limit_width  | Rectangle width limit                                    |
+| uint32_t      | limit_height | Rectangle height limit                                   |
+| Layout        |    layout    | String drawing direction (Vertical is NOT supported now) |
+| const char \* |     fmt      | Format string                                            |
+
+### Return
+
+| Type         | Description           |
+| ------------ | --------------------- |
+| unsigned int | Calculated font size. |
+
+### Note
+
+Note that the calculated font size may not exactly meet the size limit.
+This is because the font size is not strictly measured, but only "estimated" by calculation.
+
+---
+
+```c++
+unsigned int calculateFitFontSize(uint32_t limit_width,
+                                     uint32_t limit_height,
+                                     Layout layout,
+                                     const char *str)
+```
+
+### Summary
+
+Calculates the maximum font size that will fit in the specified rectangle.
+
+### Arguments
+
+| Type          |     Name     | Description                                              |
+| ------------- | :----------: | -------------------------------------------------------- |
+| uint32_t      | limit_width  | Rectangle width limit                                    |
+| uint32_t      | limit_height | Rectangle height limit                                   |
+| Layout        |    layout    | String drawing direction (Vertical is NOT supported now) |
+| const char \* |     str      | Drawing string                                           |
+
+### Return
+
+| Type         | Description           |
+| ------------ | --------------------- |
+| unsigned int | Calculated font size. |
+
+### Note
+
+Note that the calculated font size may not exactly meet the size limit.
+This is because the font size is not strictly measured, but only "estimated" by calculation.
 
 ---
 
@@ -222,6 +526,42 @@ void example_function (int32_t x, int32_t y, uint16_t c)
 | ------- | :--: | ------------------------- |
 | int32_t |  x   | Draw position X           |
 | int32_t |  y   | Draw position Y           |
+| int32_t |  c   | Draw color (16 bit color) |
+
+---
+
+```c++
+void setDrawFastHLine(Function f)
+```
+
+### Summary
+
+Set the function for drawing on the LCD.
+If you set this function, drawing method will be optimized and improve speed.
+
+### Arguments
+
+| Type     | Name | Description               |
+| -------- | :--: | ------------------------- |
+| Function |  f   | Draw fast h line function |
+
+### Return
+
+None
+
+### Note
+
+The function to be given must be a function like the one below that takes a specific argument.
+
+```c++
+void example_function (int32_t x, int32_t y, int32_t w, uint16_t c)
+```
+
+| Type    | Name | Description               |
+| ------- | :--: | ------------------------- |
+| int32_t |  x   | Draw position X           |
+| int32_t |  y   | Draw position Y           |
+| int32_t |  w   | Draw Length               |
 | int32_t |  c   | Draw color (16 bit color) |
 
 ---
@@ -309,6 +649,7 @@ Inside the function, the following process takes place.
 ```c++
 template <typename T> void setDrawer(T &drawer) {
     setDrawPixel(drawer.drawPixel);
+    setDrawFastHLine(drawer.drawFastHLine);
     setStartWrite(drawer.startWrite);
     setEndWrite(drawer.endWrite);
 }
@@ -347,24 +688,26 @@ If you NOT use FreeType 2.4.12, recommend to set `enable`.
 ---
 
 ```c++
-void setRenderTaskMode(enum RenderMode mode)
+void setRenderTaskStackSize(unsigned int stack_size)
 ```
 
 ### Summary
 
-Set the operation mode of the renderer task.  
-This is meaningless if you are not using FreeRTOS.
-Default is `NORMAL`.
+Set stack size for render task;
 
 ### Arguments
 
-| Type            | Name | Description              |
-| --------------- | :--: | ------------------------ |
-| enum RenderMode | mode | `NORMAL` or `WITH_CACHE` |
+| Type         |    Name    | Description            |
+| ------------ | :--------: | ---------------------- |
+| unsigned int | stack_size | render task stack size |
 
 ### Return
 
 None
+
+### Note
+
+If you use this method, please call before first call of rendering method.
 
 ---
 
@@ -373,7 +716,7 @@ None
 ---
 
 ```c++
-void setCursor(uint32_t x, uint32_t y)
+void setCursor(int32_t x, int32_t y)
 ```
 
 ### Summary
@@ -383,10 +726,10 @@ It is used when drawing with the `printf` function.
 
 ### Arguments
 
-| Type     | Name | Description         |
-| -------- | :--: | ------------------- |
-| uint32_t |  x   | X coordinate to set |
-| uint32_t |  y   | Y coordinate to set |
+| Type    | Name | Description         |
+| ------- | :--: | ------------------- |
+| int32_t |  x   | X coordinate to set |
+| int32_t |  y   | Y coordinate to set |
 
 ### Return
 
@@ -395,7 +738,7 @@ None
 ---
 
 ```c++
-uint32_t getCursorX()
+int32_t getCursorX()
 ```
 
 ### Summary
@@ -408,14 +751,14 @@ None
 
 ### Return
 
-| Type     | Description          |
-| -------- | -------------------- |
-| uint32_t | Current X coordinate |
+| Type    | Description          |
+| ------- | -------------------- |
+| int32_t | Current X coordinate |
 
 ---
 
 ```c++
-uint32_t getCursorY()
+int32_t getCursorY()
 ```
 
 ### Summary
@@ -428,9 +771,9 @@ None
 
 ### Return
 
-| Type     | Description          |
-| -------- | -------------------- |
-| uint32_t | Current Y coordinate |
+| Type    | Description          |
+| ------- | -------------------- |
+| int32_t | Current Y coordinate |
 
 ---
 
@@ -445,10 +788,10 @@ This is useful for making fine adjustments.
 
 ### Arguments
 
-| Type     |  Name   | Description          |
-| -------- | :-----: | -------------------- |
-| uint32_t | delta_x | X coordinate to move |
-| uint32_t | delta_y | Y coordinate to move |
+| Type    |  Name   | Description          |
+| ------- | :-----: | -------------------- |
+| int32_t | delta_x | X coordinate to move |
+| int32_t | delta_y | Y coordinate to move |
 
 ### Return
 
@@ -558,6 +901,68 @@ None
 ---
 
 ```c++
+void setBackgroundColor(uint16_t font_bgcolor)
+```
+
+### Summary
+
+Set the font background color to be retained by the renderer.  
+It is used when drawing with the `printf` function.
+
+### Arguments
+
+| Type     |     Name     | Description                                 |
+| -------- | :----------: | ------------------------------------------- |
+| uint16_t | font_bgcolor | Font background color to set (16 bit color) |
+
+### Return
+
+None
+
+---
+
+```c++
+void setLayout(Layout layout)
+```
+
+### Summary
+
+Set the text layout.  
+It is used when drawing with the `printf` function.
+
+### Arguments
+
+| Type   |  Name  | Description                                |
+| ------ | :----: | ------------------------------------------ |
+| Layout | layout | `Layout::Horizontal` or `Layout::Vertical` |
+
+### Return
+
+None
+
+---
+
+```c++
+void getLayout()
+```
+
+### Summary
+
+Get the current text layout.
+
+### Arguments
+
+None
+
+### Return
+
+| Type   | Description                                |
+| ------ | ------------------------------------------ |
+| Layout | `Layout::Horizontal` or `Layout::Vertical` |
+
+---
+
+```c++
 uint16_t getFontColor()
 ```
 
@@ -598,7 +1003,7 @@ None
 ---
 
 ```c++
-void setFontSize(size_t new_size)
+void setFontSize(unsigned int pixel)
 ```
 
 ### Summary
@@ -608,9 +1013,9 @@ It is used when drawing with the `printf` function.
 
 ### Arguments
 
-| Type   |   Name   | Description   |
-| ------ | :------: | ------------- |
-| size_t | new_size | New font size |
+| Type         | Name  | Description   |
+| ------------ | :---: | ------------- |
+| unsigned int | pixel | New font size |
 
 ### Return
 
@@ -619,7 +1024,7 @@ None
 ---
 
 ```c++
-size_t getFontSize();
+unsigned int getFontSize();
 ```
 
 ### Summary
@@ -632,9 +1037,73 @@ None
 
 ### Return
 
-| Type   | Description       |
-| ------ | ----------------- |
-| size_t | Current font size |
+| Type         | Description       |
+| ------------ | ----------------- |
+| unsigned int | Current font size |
+
+---
+
+```c++
+void setLineSpaceRatio(double line_space_ratio)
+```
+
+### Summary
+
+Gives the correction value for line spacing at line breaks.
+
+### Arguments
+
+| Type   |       Name       | Description                                             |
+| ------ | :--------------: | ------------------------------------------------------- |
+| double | line_space_ratio | The correction value for line spacing. Default is `1.0` |
+
+### Return
+
+None
+
+---
+
+```c++
+double getLineSpaceRatio()
+```
+
+### Summary
+
+Gives the correction value for line spacing at line breaks.
+
+### Arguments
+
+None
+
+### Return
+
+| Type   | Description                                |
+| ------ | ------------------------------------------ |
+| double | Current correction value for line spacing. |
+
+---
+
+```c++
+void setCacheSize(unsigned int max_faces,
+                  unsigned int max_sizes,
+                  unsigned long max_bytes)
+```
+
+### Summary
+
+Set cache size;
+
+### Arguments
+
+| Type          |   Name    | Description      |
+| ------------- | :-------: | ---------------- |
+| unsigned int  | max_faces | face cache size  |
+| unsigned int  | max_sizes | sizes cache size |
+| unsigned long | max_bytes | max cache size   |
+
+### Return
+
+None
 
 ---
 
@@ -643,7 +1112,7 @@ None
 ---
 
 ```c++
-void showFreeTypeVersion(Print &output = Serial)
+void showFreeTypeVersion()
 ```
 
 ### Summary
@@ -652,18 +1121,54 @@ Outputs the version of the FreeType library in use.
 
 ### Arguments
 
-| Type  |  Name  | Description  |
-| ----- | :----: | ------------ |
-| Print | output | Print object |
+None
 
 ### Return
 
 None
 
+### Note
+
+If `ARDUINO_BOARD` is not defined, specify the output destination with the `OpenFontRender::setPrintFunc()` or `OpenFontRender::setSerial()` function in advance.
+
 ---
 
 ```c++
-void showCredit(Print &output = Serial)
+void getFreeTypeVersion(char *str)
+```
+
+### Summary
+
+String the version of the FreeType library in use.
+
+### Arguments
+
+| Type    | Name | Description                        |
+| ------- | :--: | ---------------------------------- |
+| char \* | str  | (output) String for output version |
+
+### Return
+
+None
+
+### Note
+
+`OpenFontRender::FT_VERSION_STRING_SIZE` can be used to prepare an array large enough to store strings.
+
+```c++
+// in your main function
+
+char ftv_str[OpenFontRender::FT_VERSION_STRING_SIZE] = {0};
+
+...
+
+render.getFreeTypeVersion(ftv_str);
+```
+
+---
+
+```c++
+void showCredit()
 ```
 
 ### Summary
@@ -672,13 +1177,107 @@ Outputs a credit notation that complies with the FTL license.
 
 ### Arguments
 
-| Type  |  Name  | Description  |
-| ----- | :----: | ------------ |
-| Print | output | Print object |
+None
 
 ### Return
 
 None
+
+### Note
+
+If `ARDUINO_BOARD` is not defined, specify the output destination with the `OpenFontRender::setPrintFunc()` or `OpenFontRender::setSerial()` function in advance.
+
+---
+
+```c++
+void getCredit(char *str)
+```
+
+### Summary
+
+String a credit notation that complies with the FTL license.
+
+### Arguments
+
+| Type    | Name | Description                        |
+| ------- | :--: | ---------------------------------- |
+| char \* | str  | (output) String for output version |
+
+### Return
+
+None
+
+### Note
+
+`OpenFontRender::CREDIT_STRING_SIZE` can be used to prepare an array large enough to store strings.
+
+```c++
+// in your main function
+
+char ft_credit[OpenFontRender::CREDIT_STRING_SIZE] = {0};
+
+...
+
+render.getCredit(ft_credit);
+```
+
+---
+
+```c++
+void setPrintFunc(Function f)
+```
+
+### Summary
+
+Specifies the standard output destination for the system.
+
+### Arguments
+
+| Type     | Name | Description   |
+| -------- | :--: | ------------- |
+| Function |  f   | user function |
+
+### Return
+
+None
+
+### Note
+
+The function to be given must be a function like the one below that takes a specific argument.
+
+```c++
+void example_function (const char *s)
+```
+
+---
+
+```c++
+template <typename T> void setSerial(T &output)
+```
+
+### Summary
+
+If you have an object that produces standard output and has a `print` method, you can use this function.
+
+### Arguments
+
+| Type |  Name  | Description |
+| ---- | :----: | ----------- |
+| Any  | output | user object |
+
+### Return
+
+None
+
+### Note
+
+Inside the function, the following process takes place.
+
+```c++
+template <typename T> void setSerial(T &drawer) {
+    setPrintFunc(output.print);
+}
+```
 
 ---
 

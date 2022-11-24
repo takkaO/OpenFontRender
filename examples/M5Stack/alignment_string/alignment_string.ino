@@ -31,26 +31,41 @@ void setup()
 	// render.setStartWrite(M5.Lcd.startWrite);       // optional
 	// render.setEndWrite(M5.Lcd.endWrite);           // optional
 
-	unsigned long t_start = millis();
-
-	render.setFontColor(TFT_WHITE);
-	render.printf("Hello World\n");
-	render.seekCursor(0, 10);
-
-	render.setFontSize(30);
-	render.setFontColor(TFT_GREEN);
-	render.printf("完全なUnicodeサポート\n");
-	render.seekCursor(0, 10);
-
-	render.setFontSize(40);
-	render.setFontColor(TFT_ORANGE);
-	render.printf("こんにちは世界\n");
-
-	unsigned long t_end = millis();
-	Serial.printf("Time: %ld ms\n", t_end - t_start);
+	render.setFontSize(25);
 }
 
 void loop()
 {
 	// put your main code here, to run repeatedly:
+
+	/* You can select text alignment! use printf function */
+	// Alignment Left
+	render.setCursor(0, 0);
+	render.setFontColor(TFT_WHITE);
+	render.printf("Hello\nWorld");
+
+	// Alignment Center
+	render.setCursor(160, 95);
+	render.setFontColor(TFT_GREEN);
+	render.cprintf("完全なUnicode\nサポート");
+
+	// Alignment Right
+	render.setCursor(320, 190);
+	render.setFontColor(TFT_ORANGE);
+	render.rprintf("こんにちは\n世界");
+
+	delay(1000);
+	// M5.Lcd.fillScreen(BLACK);
+
+	/* You can select text alignment! use drawString function */
+	// Alignment Left
+	render.drawString("Hello\nWorld", 0, 0, TFT_MAGENTA, TFT_BLACK);
+
+	// Alignment Center
+	render.cdrawString("完全なUnicode\nサポート", 160, 95, TFT_YELLOW, TFT_BLACK);
+
+	// Alignment Right
+	render.rdrawString("こんにちは\n世界", 320, 190, TFT_CYAN, TFT_BLACK);
+
+	delay(1000);
 }
