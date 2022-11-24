@@ -114,6 +114,7 @@ public:
 	                  uint8_t bg,
 	                  uint8_t bb);
 	void setBackgroundColor(uint16_t font_bgcolor);
+	void setTransparentBackground(bool enable);
 	uint16_t getFontColor();
 	uint16_t getBackgroundColor();
 	void setFontSize(unsigned int pixel);
@@ -187,6 +188,7 @@ public:
 		set_drawFastHLine([&](int32_t x, int32_t y, int32_t w, uint16_t c) { return drawer.drawFastHLine(x, y, w, c); });
 		set_startWrite([&](void) { return drawer.startWrite(); });
 		set_endWrite([&](void) { return drawer.endWrite(); });
+		set_fillRect([&](int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color) { return drawer.fillRect(x, y, w, h, color); });
 	}
 
 	// Direct calls are deprecated.
@@ -194,6 +196,7 @@ public:
 	void set_drawFastHLine(std::function<void(int32_t, int32_t, int32_t, uint16_t)> user_func);
 	void set_startWrite(std::function<void(void)> user_func);
 	void set_endWrite(std::function<void(void)> user_func);
+	void set_fillRect(std::function<void(int32_t, int32_t, int32_t, int32_t, uint32_t)> user_func);
 
 	/* Static member method */
 	template <typename T>
@@ -220,6 +223,7 @@ private:
 	std::function<void(int32_t, int32_t, int32_t, uint16_t)> _drawFastHLine;
 	std::function<void(void)> _startWrite;
 	std::function<void(void)> _endWrite;
+	std::function<void(int32_t, int32_t, int32_t, int32_t, uint32_t)> _fillRect;
 
 	bool _enable_optimized_drawing;
 
@@ -230,6 +234,7 @@ private:
 	unsigned int _max_faces;
 	unsigned int _max_sizes;
 	unsigned long _max_bytes;
+	bool _transparent_background;
 
 	OFR::FaceRec _face_id;
 	struct Cursor _cursor;

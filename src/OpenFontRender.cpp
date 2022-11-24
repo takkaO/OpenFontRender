@@ -119,6 +119,7 @@ OpenFontRender::OpenFontRender() {
 	_layout                = Layout::Horizontal; // Set default layout Horizontal
 	_debug_level           = OFR_NONE;
 
+	_transparent_background   = false;
 	_enable_optimized_drawing = false;
 
 	_ftc_manager     = nullptr;
@@ -183,6 +184,10 @@ uint16_t OpenFontRender::getFontColor() {
 
 uint16_t OpenFontRender::getBackgroundColor() {
 	return _font.bg_color;
+}
+
+void OpenFontRender::setTransparentBackground(bool enable) {
+	_transparent_background = enable;
 }
 
 void OpenFontRender::setFontSize(unsigned int pixel) {
@@ -250,6 +255,8 @@ void OpenFontRender::unloadFont() {
 	g_NeedInitialize = true;
 }
 
+FT_Pos ascender = 0;
+
 uint16_t OpenFontRender::drawHString(const char *str,
                                      int32_t x,
                                      int32_t y,
@@ -263,7 +270,6 @@ uint16_t OpenFontRender::drawHString(const char *str,
 	uint16_t written_char_num    = 0;
 	Cursor initial_position      = {x, y};
 	Cursor current_line_position = {x, y};
-	FT_Pos ascender              = 0;
 	bool detect_control_char     = false;
 
 	abbox.xMin = abbox.yMin = LONG_MAX;
@@ -803,6 +809,11 @@ void OpenFontRender::set_printFunc(std::function<void(const char *)> user_func) 
 	g_Print = user_func;
 }
 
+void OpenFontRender::set_fillRect(std::function<void(int32_t, int32_t, int32_t, int32_t, uint32_t)> user_func) {
+	// This function is static member method
+	_fillRect = user_func;
+}
+
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 //
 //  OpenFontRender Class Private Methods
@@ -895,61 +906,97 @@ uint32_t OpenFontRender::getFontMaxHeight() {
 void OpenFontRender::draw2screen(FT_BitmapGlyph glyph, uint32_t x, uint32_t y, uint16_t fg, uint16_t bg) {
 	_startWrite();
 
+	int16_t cy = y - glyph->top;
+	int16_t cx = x + glyph->left;
+
+	int16_t fxs = cx;
+	uint32_t fl = 0;
+	int16_t bxs = cx;
+	uint32_t bl = 0;
+	int16_t bx  = 0;
+
+	// Fill area above glyph
+	int16_t fillwidth  = 0;
+	int16_t fillheight = 0;
+
+	if (!_transparent_background) {
+		fillwidth = ((FT_Glyph)glyph)->advance.x >> 16;
+		if (fillwidth <= 0) {
+			fillwidth = glyph->bitmap.width;
+		}
+
+		// Fill area above glyph
+		fillheight = ((ascender) >> 6) - glyph->top;
+		if (fillheight > 0) {
+			_fillRect(x, y - ((ascender) >> 6), fillwidth, fillheight, bg);
+		}
+		// Fill area below glyph
+		fillheight = (y - ((ascender) >> 6) + (((FT_Glyph)glyph)->advance.y >> 16)) - (cy + glyph->bitmap.rows);
+		if (fillheight <= 0) {
+			fillheight = y - (y - ((ascender) >> 6) + glyph->bitmap.rows);
+		}
+		if (fillheight > 0) {
+			_fillRect(x, (cy + glyph->bitmap.rows), fillwidth, fillheight, bg);
+		}
+
+		// Fill any area to left of glyph
+		if (x < cx)
+			_fillRect(x, cy, glyph->left, glyph->bitmap.rows, bg);
+		// Set x position in glyph area where background starts
+		if (x > cx)
+			bx = -(glyph->left);
+		// Fill any area to right of glyph
+		if (cx + glyph->bitmap.width < x + (((FT_Glyph)glyph)->advance.x >> 16)) {
+			_fillRect(cx + glyph->bitmap.width, cy, (x + (((FT_Glyph)glyph)->advance.x >> 16)) - (cx + glyph->bitmap.width), glyph->bitmap.rows, bg);
+		}
+	}
+
 	if (_enable_optimized_drawing) {
 		// Start of new render code for efficient rendering of pixel runs to a TFT
-		// Background fill code commented out thus //-bg-// as it is only filling the glyph bounding box
-		// Code for this will need to track the last background end x as glyphs may overlap
-		// Ideally need to keep track of the cursor position and use the font height for the fill box
-		// Could also then use a line buffer for the glyph image (entire glyph buffer could be large!)
-
-		int16_t fxs = x;
-		uint32_t fl = 0;
-		//-bg-//int16_t  bxs = x;
-		//-bg-//uint32_t bl = 0;
-		//-bg-//int16_t  bx = 0;
-
 		for (int32_t _y = 0; _y < glyph->bitmap.rows; ++_y) {
 			for (int32_t _x = 0; _x < glyph->bitmap.width; ++_x) {
 				uint8_t alpha = glyph->bitmap.buffer[_y * glyph->bitmap.pitch + _x];
 				debugPrintf((_debug_level & OFR_DEBUG) ? OFR_RAW : OFR_NONE, "%c", (alpha == 0x00 ? ' ' : 'o'));
 
 				if (alpha) {
-					//-bg-//if (bl) { _drawFastHLine( bxs, _y + y - glyph->top, bl, bg); bl = 0; }
+					if (bl) {
+						_drawFastHLine(bxs, _y + cy, bl, bg);
+						bl = 0;
+					}
 					if (alpha != 0xFF) {
-						// Draw anti-aliasing area
 						if (fl) {
-							if (fl == 1) {
-								_drawPixel(fxs, _y + y - glyph->top, fg);
-							} else {
-								_drawFastHLine(fxs, _y + y - glyph->top, fl, fg);
-							}
+							if (fl == 1)
+								_drawPixel(fxs, _y + cy, fg);
+							else
+								_drawFastHLine(fxs, _y + cy, fl, fg);
 							fl = 0;
 						}
-						_drawPixel(_x + x + glyph->left, _y + y - glyph->top, alphaBlend(alpha, fg, bg));
+						_drawPixel(_x + cx, _y + cy, alphaBlend(alpha, fg, bg));
 					} else {
-						if (fl == 0) {
-							fxs = _x + x + glyph->left;
-						}
+						if (fl == 0)
+							fxs = _x + cx;
 						fl++;
 					}
 				} else {
 					if (fl) {
-						_drawFastHLine(fxs, _y + y - glyph->top, fl, fg);
+						_drawFastHLine(fxs, _y + cy, fl, fg);
 						fl = 0;
 					}
-					//-bg-//if (!_transparent_background) {
-					//-bg-//  if (bl==0) bxs = _x + x + glyph->left;
-					//-bg-//  bl++;
-					//-bg-//}
+					if (!_transparent_background) {
+						if (bl == 0)
+							bxs = _x + cx;
+						bl++;
+					}
 				}
-				// End of new render code
 			}
 
 			if (fl) {
-				_drawFastHLine(fxs, _y + y - glyph->top, fl, fg);
+				_drawFastHLine(fxs, _y + cy, fl, fg);
 				fl = 0;
+			} else if (bl) {
+				_drawFastHLine(bxs, _y + cy, bl, bg);
+				bl = 0;
 			}
-			//-bg-//else if (bl) { _drawFastHLine( bxs, _y + y - glyph->top, bl, bg); bl = 0; }
 			debugPrintf((_debug_level & OFR_DEBUG) ? OFR_RAW : OFR_NONE, "\n");
 		}
 	} else {
@@ -959,10 +1006,10 @@ void OpenFontRender::draw2screen(FT_BitmapGlyph glyph, uint32_t x, uint32_t y, u
 			for (int32_t _x = 0; _x < glyph->bitmap.width; ++_x) {
 				uint8_t alpha = glyph->bitmap.buffer[_y * glyph->bitmap.pitch + _x];
 				debugPrintf((_debug_level & OFR_DEBUG) ? OFR_RAW : OFR_NONE, "%c", (alpha == 0x00 ? ' ' : 'o'));
-
-				if (alpha) {
-					_drawPixel(_x + x + glyph->left, _y + y - glyph->top, alphaBlend(alpha, fg, bg));
+				if (_transparent_background && alpha == 0x00) {
+					continue;
 				}
+				_drawPixel(_x + x + glyph->left, _y + y - glyph->top, alphaBlend(alpha, fg, bg));
 			}
 			debugPrintf((_debug_level & OFR_DEBUG) ? OFR_RAW : OFR_NONE, "\n");
 		}
