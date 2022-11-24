@@ -41,7 +41,8 @@ More detailed examples can be found in [examples](/examples/).
 TFT_eSPI tft;
 OpenFontRender render;
 
-void setup() {
+void setup()
+{
 	// put your setup code here, to run once:
 	Serial.begin(115200);
 	Serial.flush();
@@ -52,19 +53,24 @@ void setup() {
 	tft.fillScreen(TFT_BLACK);
 	digitalWrite(LCD_BACKLIGHT, HIGH); // turn on the backlight
 
-	// print library version
-	Serial.printf("OpenFontRender Library version: %d.%d\n",
-	              OpenFontRender::MAIN_VERSION, 
-	              OpenFontRender::MINER_VERSION);
-
+	render.setSerial(Serial);	  // Need to print render library message
 	render.showFreeTypeVersion(); // print FreeType version
 	render.showCredit();		  // print FTL credit
 
-	if (render.loadFont(binaryttf, sizeof(binaryttf))) {
+	if (render.loadFont(binaryttf, sizeof(binaryttf)))
+	{
 		Serial.println("Render initialize error");
 		return;
 	}
+
 	render.setDrawer(tft); // Set drawer object
+	/* You can also be written as follows. */
+	// render.setDrawPixel(tft.drawPixel);
+	// render.setDrawFastHLine(tft.drawFastHLine); // optional
+	// render.setStartWrite(tft.startWrite);       // optional
+	// render.setEndWrite(tft.endWrite);           // optional
+
+	unsigned long t_start = millis();
 
 	render.setFontColor(TFT_WHITE);
 	render.printf("Hello World\n");
@@ -78,9 +84,13 @@ void setup() {
 	render.setFontSize(40);
 	render.setFontColor(TFT_ORANGE);
 	render.printf("こんにちは世界\n");
+
+	unsigned long t_end = millis();
+	Serial.printf("Time: %ld ms\n", t_end - t_start);
 }
 
-void loop() {
+void loop()
+{
 	// put your main code here, to run repeatedly:
 }
 ```
@@ -98,40 +108,50 @@ void loop() {
 
 OpenFontRender render;
 
-void setup() {
+void setup()
+{
 	// put your setup code here, to run once:
 	M5.begin();
-	M5.Lcd.fillScreen(BLACK);
+	M5.Lcd.fillScreen(TFT_BLACK);
 
-	// print library version
-	Serial.printf("OpenFontRender Library version: %d.%d\n",
-	              OpenFontRender::MAIN_VERSION, 
-	              OpenFontRender::MINER_VERSION);
-
+	render.setSerial(Serial);	  // Need to print render library message
 	render.showFreeTypeVersion(); // print FreeType version
 	render.showCredit();		  // print FTL credit
 
-	if (render.loadFont("/JKG-M_3_Tiny.ttf")) 	{
+	if (render.loadFont("/JKG-M_3_Tiny.ttf"))
+	{
 		Serial.println("Render initialize error");
 		return;
 	}
-	render.setDrawer(M5.Lcd); // Set drawer object
 
-	render.setFontColor(WHITE);
+	render.setDrawer(M5.Lcd); // Set drawer object
+	/* You can also be written as follows. */
+	// render.setDrawPixel(M5.Lcd.drawPixel);
+	// render.setDrawFastHLine(M5.Lcd.drawFastHLine); // optional
+	// render.setStartWrite(M5.Lcd.startWrite);       // optional
+	// render.setEndWrite(M5.Lcd.endWrite);           // optional
+
+	unsigned long t_start = millis();
+
+	render.setFontColor(TFT_WHITE);
 	render.printf("Hello World\n");
 	render.seekCursor(0, 10);
 
 	render.setFontSize(30);
-	render.setFontColor(GREEN);
+	render.setFontColor(TFT_GREEN);
 	render.printf("完全なUnicodeサポート\n");
 	render.seekCursor(0, 10);
 
 	render.setFontSize(40);
-	render.setFontColor(ORANGE);
+	render.setFontColor(TFT_ORANGE);
 	render.printf("こんにちは世界\n");
+
+	unsigned long t_end = millis();
+	Serial.printf("Time: %ld ms\n", t_end - t_start);
 }
 
-void loop() {
+void loop()
+{
 	// put your main code here, to run repeatedly:
 }
 ```
