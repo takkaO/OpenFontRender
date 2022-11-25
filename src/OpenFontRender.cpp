@@ -231,7 +231,7 @@ FT_Error OpenFontRender::loadFont(const unsigned char *data, size_t size, uint8_
 FT_Error OpenFontRender::loadFont(const char *fpath, uint8_t target_face_index) {
 	size_t len = strlen(fpath);
 
-	_face_id.filepath = new char[len + 1];
+	_face_id.filepath = new char[len + 1];	// Release on unloadFont method
 	strncpy(_face_id.filepath, fpath, len);
 	_face_id.filepath[len] = '\0';
 
@@ -246,7 +246,6 @@ void OpenFontRender::unloadFont() {
 	FT_Done_FreeType(g_FtLibrary);
 
 	delete[] _face_id.filepath;
-	delete[] _face_id.data;
 	g_NeedInitialize = true;
 }
 
