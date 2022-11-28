@@ -246,7 +246,6 @@ void OpenFontRender::unloadFont() {
 	FT_Done_FreeType(g_FtLibrary);
 
 	delete[] _face_id.filepath;
-	delete[] _face_id.data;
 	g_NeedInitialize = true;
 }
 
