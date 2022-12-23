@@ -240,12 +240,14 @@ FT_Error OpenFontRender::loadFont(const char *fpath, uint8_t target_face_index) 
 }
 
 void OpenFontRender::unloadFont() {
-	FTC_Manager_RemoveFaceID(_ftc_manager, &_face_id);
-	FTC_Manager_Reset(_ftc_manager);
-	FTC_Manager_Done(_ftc_manager);
-	FT_Done_FreeType(g_FtLibrary);
+	if (!g_NeedInitialize) {
+		FTC_Manager_RemoveFaceID(_ftc_manager, &_face_id);
+		FTC_Manager_Reset(_ftc_manager);
+		FTC_Manager_Done(_ftc_manager);
+		FT_Done_FreeType(g_FtLibrary);
 
-	delete[] _face_id.filepath;
+		delete[] _face_id.filepath;
+	}
 	g_NeedInitialize = true;
 }
 
