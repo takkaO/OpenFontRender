@@ -231,7 +231,7 @@ FT_Error OpenFontRender::loadFont(const unsigned char *data, size_t size, uint8_
 FT_Error OpenFontRender::loadFont(const char *fpath, uint8_t target_face_index) {
 	size_t len = strlen(fpath);
 
-	_face_id.filepath = new char[len + 1];	// Release on unloadFont method
+	_face_id.filepath = new char[len + 1]; // Release on unloadFont method
 	strncpy(_face_id.filepath, fpath, len);
 	_face_id.filepath[len] = '\0';
 
@@ -382,13 +382,41 @@ uint16_t OpenFontRender::drawHString(const char *str,
 		// Calculate alignment offset
 		switch (align) {
 		case Align::Left:
+			// Fallthrough
+		case Align::TopLeft:
 			// Nothing to do
 			break;
+		case Align::MiddleLeft:
+			offset.y += ((bbox.yMax - bbox.yMin) / 2);
+			break;
+		case Align::BottomLeft:
+			offset.y += (bbox.yMax - bbox.yMin);
+			break;
 		case Align::Center:
+			// Fallthrough
+		case Align::TopCenter:
 			offset.x += ((bbox.xMax - bbox.xMin) / 2);
 			break;
+		case Align::MiddleCenter:
+			offset.x += ((bbox.xMax - bbox.xMin) / 2);
+			offset.y += ((bbox.yMax - bbox.yMin) / 2);
+			break;
+		case Align::BottomCenter:
+			offset.x += ((bbox.xMax - bbox.xMin) / 2);
+			offset.y += (bbox.yMax - bbox.yMin);
+			break;
 		case Align::Right:
+			// Fallthrough
+		case Align::TopRight:
 			offset.x += (bbox.xMax - bbox.xMin);
+			break;
+		case Align::MiddleRight:
+			offset.x += (bbox.xMax - bbox.xMin);
+			offset.y += ((bbox.yMax - bbox.yMin) / 2);
+			break;
+		case Align::BottomRight:
+			offset.x += (bbox.xMax - bbox.xMin);
+			offset.y += (bbox.yMax - bbox.yMin);
 			break;
 		default:
 			break;

@@ -47,9 +47,18 @@ enum OFR_DEBUG_LEVEL {
 };
 
 enum class Align {
-	Left,
-	Center,
-	Right
+	Left,	// = TopLeft
+	Center,	// = TopCenter
+	Right,	// = TopRight
+	TopLeft,
+	TopCenter,
+	TopRight,
+	MiddleLeft,
+	MiddleCenter,
+	MiddleRight,
+	BottomLeft,
+	BottomCenter,
+	BottomRight,
 };
 
 enum class Layout {
