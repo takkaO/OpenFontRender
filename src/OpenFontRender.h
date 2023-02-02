@@ -91,9 +91,10 @@ namespace OFR {
 class OpenFontRender {
 public:
 	static const unsigned char MAIN_VERSION  = 1;
-	static const unsigned char MINER_VERSION = 0;
+	static const unsigned char MINER_VERSION = 1;
 
 	static const unsigned char CACHE_SIZE_NO_LIMIT    = 0;
+	static const unsigned char CACHE_SIZE_MINIMUM     = 1;
 	static const unsigned char FT_VERSION_STRING_SIZE = 32;
 	static const unsigned char CREDIT_STRING_SIZE     = 128;
 

@@ -102,9 +102,9 @@ OpenFontRender::OpenFontRender() {
 	_startWrite    = []() { return; };
 	_endWrite      = []() { return; };
 
-	_max_faces = OpenFontRender::CACHE_SIZE_NO_LIMIT;
-	_max_sizes = OpenFontRender::CACHE_SIZE_NO_LIMIT;
-	_max_bytes = OpenFontRender::CACHE_SIZE_NO_LIMIT;
+	_max_faces = OpenFontRender::CACHE_SIZE_MINIMUM;
+	_max_sizes = OpenFontRender::CACHE_SIZE_MINIMUM;
+	_max_bytes = OpenFontRender::CACHE_SIZE_MINIMUM;
 
 	_face_id.filepath   = nullptr;
 	_face_id.data       = nullptr;
@@ -388,7 +388,7 @@ uint16_t OpenFontRender::drawHString(const char *str,
 			offset.x += ((bbox.xMax - bbox.xMin) / 2);
 			break;
 		case Align::Right:
-			offset.x = (bbox.xMax - bbox.xMin);
+			offset.x += (bbox.xMax - bbox.xMin);
 			break;
 		default:
 			break;
@@ -512,8 +512,9 @@ FT_Error OpenFontRender::drawChar(char character,
                                   Align align) {
 	FT_Error error;
 	FT_BBox bbox;
+	const char str[2] = {character, '\0'};
 
-	drawHString(&character, x, y, fg, bg, Align::Left, Drawing::Execute, bbox, error);
+	drawHString(str, x, y, fg, bg, align, Drawing::Execute, bbox, error);
 
 	return FT_Err_Ok;
 }
