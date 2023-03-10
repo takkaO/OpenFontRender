@@ -1,4 +1,4 @@
-# Open Font Render \[[JA](/doc/README_JA.md)\]
+# Open Font Render
 
 TTF font render support library for microcomputer using Arduino IDE.  
 This library can render TTF font files in the SD card or TTF font files embedded in the program.
@@ -6,9 +6,9 @@ This library can render TTF font files in the SD card or TTF font files embedded
 This program is inspired by [M5FontRender](https://github.com/takkaO/M5FontRender).  
 **Any small contribution is welcome.**
 
-![image](https://github.com/takkaO/OpenFontRender/blob/images/image.jpg)
+![image](https://github.com/takkaO/OpenFontRender/blob/images/image.jpg?raw=true)
 
-## Features
+### Features
 
 - Available for a variety of hardware using the Arduino IDE
 - Draws beautiful, anti-aliased fonts
@@ -16,24 +16,19 @@ This program is inspired by [M5FontRender](https://github.com/takkaO/M5FontRende
 - Can use any drawing library
 - Can be changed to any version of FreeType.
 
-## Installation
+### Installation
 
 Clone this repository into Arduino library folder.
 
-## API and Usage
+### API and Usage
 
-### API
-
-See [HERE](/doc/API.md) for a list of available APIs.
-
-### Usage
-
-This is only a part of the usage.  
-More detailed examples can be found in [examples](/examples/).
+See **[GitHub Pages](https://takkao.github.io/OpenFontRender/)** for a list of available APIs.
+Bellow is only a part of the sample code.  
+More detailed examples can be found in [examples]([/examples/](https://github.com/takkaO/OpenFontRender/tree/master/examples)).
 
 #### Load from array (Wio Terminal)
 
-```c++
+```cpp
 #include "TFT_eSPI.h"
 #include "binaryttf.h"
 #include "OpenFontRender.h"
@@ -97,7 +92,7 @@ void loop()
 
 #### Load from SD card (M5Stack)
 
-```c++
+```cpp
 #if defined(ARDUINO_M5Stack_Core_ESP32) || defined(ARDUINO_M5STACK_FIRE)
 #include "M5Stack.h"
 #elif defined(ARDUINO_M5STACK_Core2) // M5Stack Core2
@@ -156,9 +151,9 @@ void loop()
 }
 ```
 
-## How to create binary TTF file
+### How to create binary TTF file
 
-We use [binary2ttf.py](/tools/ttf2bin/ttf2bin.py) in tools directory to create binary TTF font file.  
+We use [binary2ttf.py]([/tools/ttf2bin/ttf2bin.py](https://github.com/takkaO/OpenFontRender/blob/master/tools/ttf2bin/ttf2bin.py)) in tools directory to create binary TTF font file.  
 The `binary2ttf.py` is provided in the [M5EPD](https://github.com/m5stack/M5EPD/tree/main/tools/ttf2bin) library.
 The same program is included in `tools` directory in this repo.  
 You only execute below command.
@@ -167,12 +162,12 @@ You only execute below command.
 python3 binary2ttf.py your_font_file.ttf
 ```
 
-## Switch draw function
+### Switch draw function
 
 In this library, you can change the drawing-related operations to your favorite functions (e.g. LavyonGFX).  
 To change it, use the following function.
 
-```c++
+```cpp
 render.setDrawPixel(my_draw_function);         // necessary
 
 render.setDrawFastHLine(my_draw_fast_h_line);  // optional
@@ -182,28 +177,27 @@ render.setEndWrite(my_end_write_function);     // optional
 
 If you have an object for drawing and it contains the necessary methods, you can also use `setDrawer` method instead.
 
-See [API.md](/doc/API.md) for more detailed instructions.
 
-## Switch other FreeType version
+### Switch other FreeType version
 
 You can switch to any FreeType version in this library.  
 We have confirmed that it works with 2.4.12 and 2.12.1.  
 Default version is 2.4.12 because it was the version that worked most stably.
 
-### How to switch
+#### How to switch
 
 1. Download the version of FreeType that you like.
 2. Place the downloaded FreeType folder directly under OpenFontRender.
 3. Execute `AutoRun` script.
 
-### Note
+#### Note
 
 If you are using FreeRTOS, some versions may become unstable.  
 You may have to increase the stack size or enable `useRenderTask` to get it to work.
 
-## Test
+### Test
 
-### Tested Hardware
+#### Tested Hardware
 
 This library has been tested on the following hardware.  
 We would be happy to receive reports on hardware not listed here.
@@ -220,7 +214,7 @@ We would be happy to receive reports on hardware not listed here.
 - ESP-IDF (4.4)
   - M5Stack Basic
 
-### Rendering speed
+#### Rendering speed
 
 The table below shows the time taken to draw the sample program when it was run.
 Note: the time depends on the hardware settings or font file, so this is for reference only.
@@ -231,7 +225,7 @@ Note: the time depends on the hardware settings or font file, so this is for ref
 | M5Stack Basic |    227 ms    |     230 ms      |                98 ms                 |
 | M5Stack Core2 |    346 ms    |     281 ms      |                148 ms                |
 
-## LICENSE
+### LICENSE
 
 This library is provided under the FTL license.  
 It is a BSD-style license with a credit clause.  
@@ -239,9 +233,9 @@ All programs and binaries created using this library must be credited (as shown 
 
 However, some files that are not related to FreeType can be used under the MIT license (See each files).
 
-For more information about FTL licenses, see [doc/FTL.TXT](/doc/FTL.TXT) in this repository or [FreeType Licenses](https://www.freetype.org/license.html).
+For more information about FTL licenses, see [FTL.TXT](https://github.com/takkaO/OpenFontRender/blob/master/FTL.TXT) in this repository or [FreeType Licenses](https://www.freetype.org/license.html).
 
-### Sample font
+#### Sample font
 
 We have used below font file for the sample program.  
 We would like to thank sozai-font-hako for providing us with an easy-to-use license for these wonderful fonts.

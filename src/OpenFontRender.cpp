@@ -16,6 +16,7 @@
 //  (Use only within this file.)
 //
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
+/*! \cond PRIVATE */
 
 typedef struct {
 	enum OFR::LoadFontFrom from; // data source
@@ -46,12 +47,15 @@ typedef struct {
 } RenderTaskParameter;
 #endif
 
+/*! \endcond */
+
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 //
 //  Function Definition
 //  (See below more ditails.)
 //
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
+/*! \cond PRIVATE */
 
 FT_Error ftc_face_requester(FTC_FaceID face_id,
                             FT_Library library,
@@ -63,12 +67,15 @@ void debugPrintf(uint8_t level, const char *fmt, ...);
 void RenderTask(void *pvParameters);
 #endif
 
+/*! \endcond */
+
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 //
 //  Global Variables
 //  (Use only within this file.)
 //
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
+/*! \cond PRIVATE */
 
 FT_Library g_FtLibrary;
 bool g_NeedInitialize                     = true;
@@ -81,6 +88,8 @@ volatile bool g_UseRenderTask                     = (FREETYPE_MAJOR == 2 && FREE
 unsigned int g_RenderTaskStackSize                = 8192 + 8192 + 4096;
 RenderTaskParameter g_TaskParameter;
 #endif
+
+/*! \endcond */
 
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 //
@@ -102,124 +111,316 @@ OpenFontRender::OpenFontRender() {
 	_startWrite    = []() { return; };
 	_endWrite      = []() { return; };
 
-	_max_faces = OpenFontRender::CACHE_SIZE_MINIMUM;
-	_max_sizes = OpenFontRender::CACHE_SIZE_MINIMUM;
-	_max_bytes = OpenFontRender::CACHE_SIZE_MINIMUM;
+	_cache.max_faces = OpenFontRender::CACHE_SIZE_MINIMUM;
+	_cache.max_sizes = OpenFontRender::CACHE_SIZE_MINIMUM;
+	_cache.max_bytes = OpenFontRender::CACHE_SIZE_MINIMUM;
 
 	_face_id.filepath   = nullptr;
 	_face_id.data       = nullptr;
 	_face_id.data_size  = 0;
 	_face_id.face_index = 0;
 
-	_font.line_space_ratio = 1.0;    // Set default line space ratio
-	_font.size             = 44;     // Set default font size
-	_font.fg_color         = 0xFFFF; // Set default font color (White)
-	_font.bg_color         = 0x0000; // Set default background color (Black)
-	_font.support_vertical = false;
-	_layout                = Layout::Horizontal; // Set default layout Horizontal
+	_text.line_space_ratio = 1.0;    // Set default line space ratio
+	_text.size             = 44;     // Set default font size
+	_text.fg_color         = 0xFFFF; // Set default font color (White)
+	_text.bg_color         = 0x0000; // Set default background color (Black)
+	_text.align            = Align::Left;
+	_text.bg_fill_method   = BgFillMethod::None;
+	_text.layout           = Layout::Horizontal; // Set default layout Horizontal
 	_debug_level           = OFR_NONE;
 
-	_enable_optimized_drawing = false;
+	_flags.enable_optimized_drawing = false;
 
 	_ftc_manager     = nullptr;
 	_ftc_cmap_cache  = nullptr;
 	_ftc_image_cache = nullptr;
+
+	_saved_state.drawn_bg_point       = {0, 0};
+	_saved_state.prev_max_font_height = 0;
+	_saved_state.prev_font_size       = 0;
 }
 
+/*!
+ * @brief Set whether the rendering task should be performed independently or not.
+ * @param[in] (enable) If true, makes the task independent.
+ * @ingroup rtos_api
+ * @note If FreeRTOS is not being used, it does nothing.
+ * @note The default is `false` if the version of FreeType you are using is 2.4.12 (library default), and `true` for all other versions.
+ */
 void OpenFontRender::setUseRenderTask(bool enable) {
 #ifdef FREERTOS_CONFIG_H
 	g_UseRenderTask = enable;
 #endif
 }
 
+/*!
+ * @brief Specify the stack size for independent rendering tasks.
+ * @param[in] (stack_size) Stack size used by the rendering task.
+ * @ingroup rtos_api
+ * @note If FreeRTOS is not being used, it does nothing.
+ * @note Default value is 20480.
+ */
 void OpenFontRender::setRenderTaskStackSize(unsigned int stack_size) {
 #ifdef FREERTOS_CONFIG_H
 	g_RenderTaskStackSize = stack_size;
 #endif
 }
 
+/*!
+ * @brief Set cursor positions.
+ * @param[in] (x) x-coordinate to set.
+ * @param[in] (y) y-coordinate to set.
+ * @ingroup cursor_api
+ */
 void OpenFontRender::setCursor(int32_t x, int32_t y) {
-	_cursor = {x, y};
+	_text.cursor = {x, y};
 }
 
+/*!
+ * @brief Get current cursor x-coordinate.
+ * @return Current cursor x-coordinate.
+ * @ingroup cursor_api
+ */
 int32_t OpenFontRender::getCursorX() {
-	return _cursor.x;
+	return _text.cursor.x;
 }
 
+/*!
+ * @brief Get current cursor y-coordinate.
+ * @return Current cursor y-coordinate.
+ * @ingroup cursor_api
+ */
 int32_t OpenFontRender::getCursorY() {
-	return _cursor.y;
+	return _text.cursor.y;
 }
 
+/*!
+ * @brief Move cursor position.
+ * @param[in] (delta_x) Amount to move the x-coordinate.
+ * @param[in] (delta_y) Amount to move the y-coordinate.
+ * @ingroup cursor_api
+ */
 void OpenFontRender::seekCursor(int32_t delta_x, int32_t delta_y) {
-	_cursor.x += delta_x;
-	_cursor.y += delta_y;
+	_text.cursor.x += delta_x;
+	_text.cursor.y += delta_y;
 }
 
+/*!
+ * @brief Specify the text color.
+ * @param[in] (font_color) 16 bit rgb color for text.
+ * @ingroup font_api
+ */
 void OpenFontRender::setFontColor(uint16_t font_color) {
-	_font.fg_color = font_color;
+	_text.fg_color = font_color;
 }
 
-void OpenFontRender::setFontColor(uint16_t font_color, uint16_t font_bgcolor) {
-	_font.fg_color = font_color;
-	_font.bg_color = font_bgcolor;
-}
-
-void OpenFontRender::setFontColor(uint8_t r, uint8_t g, uint8_t b) {
-	_font.fg_color = color565(r, g, b);
-}
-
-void OpenFontRender::setFontColor(uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg, uint8_t bb) {
-	_font.fg_color = color565(fr, fg, fb);
-	_font.bg_color = color565(br, bg, bb);
-}
-
+/*!
+ * @brief Specify the background color.
+ * @param[in] (font_bgcolor) 16 bit rgb color for background.
+ * @ingroup font_api
+ */
 void OpenFontRender::setBackgroundColor(uint16_t font_bgcolor) {
-	_font.bg_color = font_bgcolor;
+	_text.bg_color = font_bgcolor;
 }
 
+/*!
+ * @brief Specify the text color and background color.
+ * @param[in] (font_color) 16 bit rgb color for text.
+ * @param[in] (font_bgcolor) 16 bit rgb color for background.
+ * @ingroup font_api
+ */
+void OpenFontRender::setFontColor(uint16_t font_color, uint16_t font_bgcolor) {
+	_text.fg_color = font_color;
+	_text.bg_color = font_bgcolor;
+}
+
+/*!
+ * @brief Specify the text color.
+ * @param[in] (r) Red color (8bit) for text.
+ * @param[in] (g) Green color (8bit) for text.
+ * @param[in] (b) Blue color (8bit) for text.
+ * @ingroup font_api
+ */
+void OpenFontRender::setFontColor(uint8_t r, uint8_t g, uint8_t b) {
+	_text.fg_color = color565(r, g, b);
+}
+
+/*!
+ * @brief Specify the background color.
+ * @param[in] (r) Red color (8bit) for background.
+ * @param[in] (g) Green color (8bit) for background.
+ * @param[in] (b) Blue color (8bit) for background.
+ * @ingroup font_api
+ */
+void OpenFontRender::setBackgroundColor(uint8_t r, uint8_t g, uint8_t b) {
+	_text.bg_color = color565(r, g, b);
+}
+
+/*!
+ * @brief Specify the text color and background color..
+ * @param[in] (fr) Red color (8bit) for text.
+ * @param[in] (fg) Green color (8bit) for text.
+ * @param[in] (fb) Blue color (8bit) for text.
+ * @param[in] (br) Red color (8bit) for background.
+ * @param[in] (bg) Green color (8bit) for background.
+ * @param[in] (bb) Blue color (8bit) for background.
+ * @ingroup font_api
+ */
+void OpenFontRender::setFontColor(uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg, uint8_t bb) {
+	_text.fg_color = color565(fr, fg, fb);
+	_text.bg_color = color565(br, bg, bb);
+}
+
+/*!
+ * @brief Get the current text color.
+ * @return Current text color.
+ * @ingroup font_api
+ */
 uint16_t OpenFontRender::getFontColor() {
-	return _font.fg_color;
+	return _text.fg_color;
 }
 
+/*!
+ * @brief Get the current background color.
+ * @return Current background color.
+ * @ingroup font_api
+ */
 uint16_t OpenFontRender::getBackgroundColor() {
-	return _font.bg_color;
+	return _text.bg_color;
 }
 
+/*!
+ * @brief Set the font size for rendering.
+ * @param[in] (pixel) Font size.
+ * @ingroup font_api
+ * @note Default size is `44`.
+ * @note It will draw larger characters in proportion to the size of the number you set.
+ */
 void OpenFontRender::setFontSize(unsigned int pixel) {
-	_font.size = pixel;
+	_text.size = pixel;
 }
 
+/*!
+ * @brief Get the current font size.
+ * @return Current font size.
+ * @ingroup font_api
+ */
 unsigned int OpenFontRender::getFontSize() {
-	return _font.size;
+	return _text.size;
 }
 
+/*!
+ * @brief Adjusts the width between lines of text.
+ * @param[in] (line_space_ratio) Correction rate for line spacing greater than 0.
+ * @ingroup font_api
+ * @note Default rate is `1.0`.
+ * @note The larger the value, the wider the line spacing.
+ */
 double OpenFontRender::setLineSpaceRatio(double line_space_ratio) {
 	if (line_space_ratio <= 0) {
 		// Invalid argument
-		return _font.line_space_ratio;
+		return _text.line_space_ratio;
 	}
-	_font.line_space_ratio = line_space_ratio;
-	return _font.line_space_ratio;
+	_text.line_space_ratio = line_space_ratio;
+	return _text.line_space_ratio;
 }
 
+/*!
+ * @brief Get the current line space ratio.
+ * @return Current line space ratio.
+ * @ingroup font_api
+ */
 double OpenFontRender::getLineSpaceRatio() {
-	return _font.line_space_ratio;
+	return _text.line_space_ratio;
 }
 
+/*!
+ * @brief Set the background fill method.
+ * @param[in] (method) Method of filling background.
+ * @ingroup layout_api
+ * @see BgFillMethod
+ * @note Default is `None`.
+ */
+void OpenFontRender::setBackgroundFillMethod(BgFillMethod method) {
+	_text.bg_fill_method = method;
+}
+
+/*!
+ * @brief Get the current background fill method.
+ * @return Current background fill method.
+ * @ingroup layout_api
+ * @see BgFillMethod
+ */
+BgFillMethod OpenFontRender::getBackgroundFillMethod() {
+	return _text.bg_fill_method;
+}
+
+/*!
+ * @brief Set the direction of text writing.
+ * @param[in] (layout) Direction of text writing.
+ * @ingroup layout_api
+ * @see Layout
+ * @note Default is `Horizontal`.
+ * @attention `Vertical` is not yet supported (will be implemented in the future).
+ */
 void OpenFontRender::setLayout(Layout layout) {
-	_layout = layout;
+	_text.layout = layout;
 }
 
+/*!
+ * @brief Get the current direction of text writing.
+ * @return Current direction of text writing.
+ * @ingroup layout_api
+ * @see Layout
+ */
 Layout OpenFontRender::getLayout() {
-	return _layout;
+	return _text.layout;
 }
 
+/*!
+ * @brief Set the text alignment.
+ * @param[in] (align) Text alignment.
+ * @ingroup layout_api
+ * @see Align
+ * @note Default is `TopLeft`.
+ */
+void OpenFontRender::setAlignment(Align align) {
+	_text.align = align;
+}
+
+/*!
+ * @brief Get the current text alignment.
+ * @return Current text alignment.
+ * @ingroup layout_api
+ * @see Align
+ */
+Align OpenFontRender::getAlignment() {
+	return _text.align;
+}
+
+/*!
+ * @brief Set FreeType cache size.
+ * @param[in] (max_faces) Maximum number of opened FT_Face objects.
+ * @param[in] (max_sizes) Maximum number of opened FT_Size objects.
+ * @param[in] (max_bytes) Maximum number of bytes to use for cached data.
+ * @ingroup rendering_api
+ * @see CACHE_SIZE_NO_LIMIT, CACHE_SIZE_MINIMUM
+ * @note Default is `CACHE_SIZE_MINIMUM`.
+ */
 void OpenFontRender::setCacheSize(unsigned int max_faces, unsigned int max_sizes, unsigned long max_bytes) {
-	_max_faces = max_faces;
-	_max_sizes = max_sizes;
-	_max_bytes = max_bytes;
+	_cache.max_faces = max_faces;
+	_cache.max_sizes = max_sizes;
+	_cache.max_bytes = max_bytes;
 }
 
+/*!
+ * @brief Load font from memory.
+ * @param[in] (*data) Font data array.
+ * @param[in] (size) Font data array size.
+ * @param[in] (target_face_index) Load font index. Default is 0.
+ * @return FreeType error code. 0 is success.
+ * @ingroup rendering_api
+ */
 FT_Error OpenFontRender::loadFont(const unsigned char *data, size_t size, uint8_t target_face_index) {
 	_face_id.data_size = size;
 	_face_id.data      = (unsigned char *)data;
@@ -228,6 +429,16 @@ FT_Error OpenFontRender::loadFont(const unsigned char *data, size_t size, uint8_
 	return loadFont(OFR::FROM_MEMORY);
 }
 
+/*!
+ * @brief Load font from external memory.
+ * @param[in] (*fpath) Font file path.
+ * @param[in] (target_face_index) Load font index. Default is 0.
+ * @return FreeType error code. 0 is success.
+ * @ingroup rendering_api
+ * @note SD card access is strongly hardware dependent, so for hardware other than M5Stack and Wio Terminal, 
+ * @note you will need to add file manipulation functions to FileSupport.cpp/.h.
+ * @note Any better solutions are welcome.
+ */
 FT_Error OpenFontRender::loadFont(const char *fpath, uint8_t target_face_index) {
 	size_t len = strlen(fpath);
 
@@ -239,6 +450,10 @@ FT_Error OpenFontRender::loadFont(const char *fpath, uint8_t target_face_index) 
 	return loadFont(OFR::FROM_FILE);
 }
 
+/*!
+ * @brief Unload font data.
+ * @ingroup rendering_api
+ */
 void OpenFontRender::unloadFont() {
 	if (!g_NeedInitialize) {
 		FTC_Manager_RemoveFaceID(_ftc_manager, &_face_id);
@@ -251,6 +466,22 @@ void OpenFontRender::unloadFont() {
 	g_NeedInitialize = true;
 }
 
+/*!
+ * @brief Renders text horizontally.
+ * @param[in] (*str) String to draw.
+ * @param[in] (x) Drawing start position (x-coordinate).
+ * @param[in] (y) Drawing start position (y-coordinate).
+ * @param[in] (fg) 16 bit rgb color for text.
+ * @param[in] (bg) 16 bit rgb color for background.
+ * @param[in] (align) Text alignment.
+ * @param[in] (drawing) Mode of draw to screen
+ * @param[out] (&abbox) Bounding box around drawn text.
+ * @param[out] (&error) Rendering error.
+ * @return Number of characters success to write.
+ * @ingroup rendering_api
+ * @note Direct calls to this function are not recommended. This is because it complicates the call.
+ * @note Instead, it is recommended to use the `printf` and `drawString` functions in combination with optional methods such as `setFontColor` and `setAlignment` function.
+ */
 uint16_t OpenFontRender::drawHString(const char *str,
                                      int32_t x,
                                      int32_t y,
@@ -273,7 +504,7 @@ uint16_t OpenFontRender::drawHString(const char *str,
 	FTC_ImageTypeRec image_type;
 	image_type.face_id = &_face_id;
 	image_type.width   = 0;
-	image_type.height  = _font.size;
+	image_type.height  = _text.size;
 	image_type.flags   = FT_LOAD_DEFAULT;
 
 	// decode UTF8
@@ -294,7 +525,7 @@ uint16_t OpenFontRender::drawHString(const char *str,
 		FTC_ScalerRec scaler;
 		scaler.face_id = &_face_id;
 		scaler.width   = 0;
-		scaler.height  = _font.size;
+		scaler.height  = _text.size;
 		scaler.pixel   = true;
 		scaler.x_res   = 0;
 		scaler.y_res   = 0;
@@ -427,12 +658,29 @@ uint16_t OpenFontRender::drawHString(const char *str,
 		bbox.yMin -= offset.y;
 		bbox.yMax -= offset.y;
 
+		if (_text.bg_fill_method == BgFillMethod::Block) {
+			// Clear the area to be rendering if fill method is Block
+			if (_flags.enable_optimized_drawing) {
+				// We can use fastHLine method
+				for (int _y = bbox.yMin; _y <= bbox.yMax; _y++) {
+					_drawFastHLine(bbox.xMin, _y, bbox.xMax - bbox.xMin, bg);
+				}
+			} else {
+				for (int _y = bbox.yMin; _y <= bbox.yMax; _y++) {
+					for (int _x = bbox.xMin; _x <= bbox.xMax; _x++) {
+						_drawPixel(_x, _y, bg);
+					}
+				}
+			}
+		}
+
 		// Restore coordinates
 		x = current_line_position.x;
 		y = current_line_position.y;
 
 		if (drawing == Drawing::Execute) {
-			image_type.flags = FT_LOAD_RENDER;
+			image_type.flags              = FT_LOAD_RENDER;
+			_saved_state.drawn_bg_point.x = (x - offset.x);
 			uint16_t rendering_unicode;
 
 			while (rendering_unicode_q.size() != 0) {
@@ -493,6 +741,10 @@ uint16_t OpenFontRender::drawHString(const char *str,
 
 					draw2screen(bit, pos.x, pos.y, fg, bg);
 
+					if (_saved_state.drawn_bg_point.x < (pos.x + (uint32_t)bit->bitmap.width)) {
+						_saved_state.drawn_bg_point.x = pos.x + (uint32_t)bit->bitmap.width;
+					}
+
 					written_char_num++;
 				}
 				x += (aglyph->advance.x >> 16);
@@ -508,7 +760,7 @@ uint16_t OpenFontRender::drawHString(const char *str,
 				break;
 			case '\n':
 				x = initial_position.x;
-				y += (int32_t)(getFontMaxHeight() * _font.line_space_ratio);
+				y += (int32_t)(getFontMaxHeight() * _text.line_space_ratio);
 				break;
 			default:
 				// No supported control char
@@ -525,13 +777,24 @@ uint16_t OpenFontRender::drawHString(const char *str,
 
 	if (detect_control_char && unicode == '\n') {
 		// If string end with '\n' control char, expand bbox
-		abbox.yMax += (int32_t)(getFontMaxHeight() * _font.line_space_ratio);
+		abbox.yMax += (int32_t)(getFontMaxHeight() * _text.line_space_ratio);
 	}
 
-	_cursor = {x, y};
+	_text.cursor = {x, y};
 	return written_char_num;
 }
 
+/*!
+ * @brief Render single character.
+ * @param[in] (character) Character to draw.
+ * @param[in] (x) Drawing start position (x-coordinate).
+ * @param[in] (y) Drawing start position (y-coordinate).
+ * @param[in] (fg) 16 bit rgb color for text.
+ * @param[in] (bg) 16 bit rgb color for background.
+ * @param[in] (align) Text alignment.
+ * @return Rendering error.
+ * @ingroup rendering_api
+ */
 FT_Error OpenFontRender::drawChar(char character,
                                   int32_t x,
                                   int32_t y,
@@ -547,6 +810,18 @@ FT_Error OpenFontRender::drawChar(char character,
 	return FT_Err_Ok;
 }
 
+/*!
+ * @brief Renders text.
+ * @param[in] (*str) String to draw.
+ * @param[in] (x) Drawing start position (x-coordinate).
+ * @param[in] (y) Drawing start position (y-coordinate).
+ * @param[in] (fg) 16 bit rgb color for text.
+ * @param[in] (bg) 16 bit rgb color for background.
+ * @param[in] (layout) Direction of writing.
+ * @return Number of characters success to write.
+ * @ingroup rendering_api
+ * @attention `Vertical` is not yet supported (will be implemented in the future).
+ */
 uint16_t OpenFontRender::drawString(const char *str,
                                     int32_t x,
                                     int32_t y,
@@ -567,6 +842,20 @@ uint16_t OpenFontRender::drawString(const char *str,
 	}
 }
 
+/*!
+ * @brief Renders text as Top-Center.
+ * @param[in] (*str) String to draw.
+ * @param[in] (x) Drawing start position (x-coordinate).
+ * @param[in] (y) Drawing start position (y-coordinate).
+ * @param[in] (fg) 16 bit rgb color for text.
+ * @param[in] (bg) 16 bit rgb color for background.
+ * @param[in] (layout) Direction of writing.
+ * @return Number of characters success to write.
+ * @ingroup rendering_api
+ * @warning `Vertical` is not yet supported (will be implemented in the future).
+ * @deprecated It is recommended to use the `printf` or `drawString` functions in combination with optional methods such as `setAlignment` function.
+ * @deprecated It will be removed in the future.
+ */
 uint16_t OpenFontRender::cdrawString(const char *str,
                                      int32_t x,
                                      int32_t y,
@@ -587,6 +876,20 @@ uint16_t OpenFontRender::cdrawString(const char *str,
 	}
 }
 
+/*!
+ * @brief Renders text as Top-Right.
+ * @param[in] (*str) String to draw.
+ * @param[in] (x) Drawing start position (x-coordinate).
+ * @param[in] (y) Drawing start position (y-coordinate).
+ * @param[in] (fg) 16 bit rgb color for text.
+ * @param[in] (bg) 16 bit rgb color for background.
+ * @param[in] (layout) Direction of writing.
+ * @return Number of characters success to write.
+ * @ingroup rendering_api
+ * @warning `Vertical` is not yet supported (will be implemented in the future).
+ * @deprecated It is recommended to use the `printf` or `drawString` functions in combination with optional methods such as `setAlignment` function.
+ * @deprecated It will be removed in the future.
+ */
 uint16_t OpenFontRender::rdrawString(const char *str,
                                      int32_t x,
                                      int32_t y,
@@ -607,6 +910,13 @@ uint16_t OpenFontRender::rdrawString(const char *str,
 	}
 }
 
+/*!
+ * @brief Renders text with format specifier.
+ * @param[in] (*fmt) Format specifier.
+ * @param[in] (...) Arguments for format specifier.
+ * @return Number of characters success to write.
+ * @ingroup rendering_api
+ */
 uint16_t OpenFontRender::printf(const char *fmt, ...) {
 	char str[256] = {0};
 	va_list ap;
@@ -615,9 +925,18 @@ uint16_t OpenFontRender::printf(const char *fmt, ...) {
 	vsnprintf(str, 256, fmt, ap);
 	va_end(ap);
 
-	return drawString(str, _cursor.x, _cursor.y, _font.fg_color, _font.bg_color, _layout);
+	return drawString(str, _text.cursor.x, _text.cursor.y, _text.fg_color, _text.bg_color, _text.layout);
 }
 
+/*!
+ * @brief Renders text as Top-Center with format specifier.
+ * @param[in] (*fmt) Format specifier.
+ * @param[in] (...) Arguments for format specifier.
+ * @return Number of characters success to write.
+ * @ingroup rendering_api
+ * @deprecated It is recommended to use the `printf` or `drawString` functions in combination with optional methods such as `setAlignment` function.
+ * @deprecated It will be removed in the future.
+ */
 uint16_t OpenFontRender::cprintf(const char *fmt, ...) {
 	char str[256] = {0};
 	va_list ap;
@@ -626,9 +945,18 @@ uint16_t OpenFontRender::cprintf(const char *fmt, ...) {
 	vsnprintf(str, 256, fmt, ap);
 	va_end(ap);
 
-	return cdrawString(str, _cursor.x, _cursor.y, _font.fg_color, _font.bg_color, _layout);
+	return cdrawString(str, _text.cursor.x, _text.cursor.y, _text.fg_color, _text.bg_color, _text.layout);
 }
 
+/*!
+ * @brief Renders text as Top-Right with format specifier.
+ * @param[in] (*fmt) Format specifier.
+ * @param[in] (...) Arguments for format specifier.
+ * @return Number of characters success to write.
+ * @ingroup rendering_api
+ * @deprecated It is recommended to use the `printf` or `drawString` functions in combination with optional methods such as `setAlignment` function.
+ * @deprecated It will be removed in the future.
+ */
 uint16_t OpenFontRender::rprintf(const char *fmt, ...) {
 	char str[256] = {0};
 	va_list ap;
@@ -637,9 +965,21 @@ uint16_t OpenFontRender::rprintf(const char *fmt, ...) {
 	vsnprintf(str, 256, fmt, ap);
 	va_end(ap);
 
-	return rdrawString(str, _cursor.x, _cursor.y, _font.fg_color, _font.bg_color, _layout);
+	return rdrawString(str, _text.cursor.x, _text.cursor.y, _text.fg_color, _text.bg_color, _text.layout);
 }
 
+/*!
+ * @brief Calculate text bounding box with format specifier.
+ * @param[in] (x) Drawing start position (x-coordinate).
+ * @param[in] (y) Drawing start position (y-coordinate).
+ * @param[in] (font_size) Font size.
+ * @param[in] (align) Text alignment.
+ * @param[in] (layout) Direction of writing.
+ * @param[in] (*fmt) Format specifier.
+ * @param[in] (...) Arguments for format specifier.
+ * @return Smallest rectangle that encloses the drawn string.
+ * @ingroup rendering_api
+ */
 FT_BBox OpenFontRender::calculateBoundingBoxFmt(int32_t x,
                                                 int32_t y,
                                                 unsigned int font_size,
@@ -656,6 +996,17 @@ FT_BBox OpenFontRender::calculateBoundingBoxFmt(int32_t x,
 	return calculateBoundingBox(x, y, font_size, align, layout, (const char *)str);
 }
 
+/*!
+ * @brief Calculate text bounding box.
+ * @param[in] (x) Drawing start position (x-coordinate).
+ * @param[in] (y) Drawing start position (y-coordinate).
+ * @param[in] (font_size) Font size.
+ * @param[in] (align) Text alignment.
+ * @param[in] (layout) Direction of writing.
+ * @param[in] (*str) Target string.
+ * @return Smallest rectangle that encloses the drawn string.
+ * @ingroup rendering_api
+ */
 FT_BBox OpenFontRender::calculateBoundingBox(int32_t x,
                                              int32_t y,
                                              unsigned int font_size,
@@ -665,9 +1016,9 @@ FT_BBox OpenFontRender::calculateBoundingBox(int32_t x,
 	FT_Error error;
 	FT_BBox bbox               = {0, 0, 0, 0};
 	unsigned int tmp_font_size = getFontSize();
-	Cursor tmp_cursor          = _cursor;
+	Cursor tmp_cursor          = _text.cursor;
 
-	_cursor = {x, y};
+	_text.cursor = {x, y};
 	setFontSize(font_size);
 
 	switch (layout) {
@@ -682,11 +1033,19 @@ FT_BBox OpenFontRender::calculateBoundingBox(int32_t x,
 	}
 
 	setFontSize(tmp_font_size);
-	_cursor = tmp_cursor;
+	_text.cursor = tmp_cursor;
 
 	return bbox;
 }
 
+/*!
+ * @brief Calculate text width.
+ * @param[in] (*fmt) Format specifier.
+ * @param[in] (...) Arguments for format specifier.
+ * @return Text width.
+ * @ingroup rendering_api
+ * @note This process takes time.
+ */
 uint32_t OpenFontRender::getTextWidth(const char *fmt, ...) {
 	char str[256] = {0};
 	va_list ap;
@@ -695,10 +1054,18 @@ uint32_t OpenFontRender::getTextWidth(const char *fmt, ...) {
 	vsnprintf(str, 256, fmt, ap);
 	va_end(ap);
 
-	FT_BBox bbox = calculateBoundingBox(0, 0, _font.size, Align::Left, _layout, str);
+	FT_BBox bbox = calculateBoundingBox(0, 0, _text.size, Align::Left, _text.layout, str);
 	return (bbox.xMax - bbox.xMin);
 }
 
+/*!
+ * @brief Calculate text height.
+ * @param[in] (*fmt) Format specifier.
+ * @param[in] (...) Arguments for format specifier.
+ * @return Text height.
+ * @ingroup rendering_api
+ * @note This process takes time.
+ */
 uint32_t OpenFontRender::getTextHeight(const char *fmt, ...) {
 	char str[256] = {0};
 	va_list ap;
@@ -707,10 +1074,23 @@ uint32_t OpenFontRender::getTextHeight(const char *fmt, ...) {
 	vsnprintf(str, 256, fmt, ap);
 	va_end(ap);
 
-	FT_BBox bbox = calculateBoundingBox(0, 0, _font.size, Align::Left, _layout, str);
+	FT_BBox bbox = calculateBoundingBox(0, 0, _text.size, Align::Left, _text.layout, str);
 	return (bbox.yMax - bbox.yMin);
 }
 
+/*!
+ * @brief Calculates the maximum font size that will fit the specified format string and the specified rectangle.
+ * @param[in] (limit_width) Limit width size.
+ * @param[in] (limit_height) Limit height size.
+ * @param[in] (layout) Direction of text writing.
+ * @param[in] (*fmt) Format specifier.
+ * @param[in] (...) Arguments for format specifier.
+ * @return Calculated font size.
+ * @ingroup rendering_api
+ * @note This process takes time.
+ * @attention Note that the calculated font size may not exactly meet the size limit.
+ * @attention This is because the font size is not strictly measured, but only "estimated" by calculation.
+ */
 unsigned int OpenFontRender::calculateFitFontSizeFmt(uint32_t limit_width,
                                                      uint32_t limit_height,
                                                      Layout layout,
@@ -725,6 +1105,18 @@ unsigned int OpenFontRender::calculateFitFontSizeFmt(uint32_t limit_width,
 	return calculateFitFontSize(limit_width, limit_height, layout, (const char *)str);
 }
 
+/*!
+ * @brief Calculates the maximum font size that will fit the specified string and the specified rectangle.
+ * @param[in] (limit_width) Limit width size.
+ * @param[in] (limit_height) Limit height size.
+ * @param[in] (layout) Direction of text writing.
+ * @param[in] (*str) Target string.
+ * @return Calculated font size.
+ * @ingroup rendering_api
+ * @note This process takes time.
+ * @attention Note that the calculated font size may not exactly meet the size limit.
+ * @attention This is because the font size is not strictly measured, but only "estimated" by calculation.
+ */
 unsigned int OpenFontRender::calculateFitFontSize(uint32_t limit_width,
                                                   uint32_t limit_height,
                                                   Layout layout,
@@ -733,7 +1125,7 @@ unsigned int OpenFontRender::calculateFitFontSize(uint32_t limit_width,
 	FT_BBox bbox1              = {0, 0, 0, 0};
 	FT_BBox bbox2              = {0, 0, 0, 0};
 	unsigned int tmp_font_size = getFontSize();
-	Cursor tmp_cursor          = _cursor;
+	Cursor tmp_cursor          = _text.cursor;
 	unsigned int fs1           = 10;
 	unsigned int fs2           = 50;
 	int32_t w1, w2, h1, h2;
@@ -749,7 +1141,7 @@ unsigned int OpenFontRender::calculateFitFontSize(uint32_t limit_width,
 		break;
 	default:
 		setFontSize(tmp_font_size);
-		_cursor = tmp_cursor;
+		_text.cursor = tmp_cursor;
 		return 0;
 	}
 	w1 = bbox1.xMax - bbox1.xMin;
@@ -766,7 +1158,7 @@ unsigned int OpenFontRender::calculateFitFontSize(uint32_t limit_width,
 		break;
 	default:
 		setFontSize(tmp_font_size);
-		_cursor = tmp_cursor;
+		_text.cursor = tmp_cursor;
 		return 0;
 	}
 	w2 = bbox2.xMax - bbox2.xMin;
@@ -776,34 +1168,69 @@ unsigned int OpenFontRender::calculateFitFontSize(uint32_t limit_width,
 	unsigned int hfs = (unsigned int)(((fs2 - fs1) / (h2 - h1 + 0.000001)) * (limit_height - h1) + fs1);
 
 	setFontSize(tmp_font_size);
-	_cursor = tmp_cursor;
+	_text.cursor = tmp_cursor;
 
 	return std::min(wfs, hfs);
 }
 
+/*!
+ * @brief Show using FreeType version.
+ * @ingroup utility_api
+ * @see setSerial, setPrintFunc
+ * @note Need to set external output function.
+ * @note Use the `setSerial` or `setPrintFunc` function to set the external output function.
+ */
 void OpenFontRender::showFreeTypeVersion() {
 	char s[OpenFontRender::FT_VERSION_STRING_SIZE] = {0};
 	getFreeTypeVersion(s);
 	g_Print(s);
 }
 
+/*!
+ * @brief Show FreeType credit.
+ * @ingroup utility_api
+ * @see setSerial, setPrintFunc
+ * @note Need to set external output function.
+ * @note Use the `setSerial` or `setPrintFunc` function to set the external output function.
+ */
 void OpenFontRender::showCredit() {
 	char s[OpenFontRender::CREDIT_STRING_SIZE] = {0};
 	getCredit(s);
 	g_Print(s);
 }
 
+/*!
+ * @brief Get using FreeType version text.
+ * @ingroup utility_api
+ * @param[out] (*str) FreeType version string.
+ * @note The minimum string length required can be obtained with `OpenFontRender::FT_VERSION_STRING_SIZE`.
+ * @attention An array of sufficient length must be passed as an argument.
+ */
 void OpenFontRender::getFreeTypeVersion(char *str) {
 	snprintf(str, OpenFontRender::FT_VERSION_STRING_SIZE,
 	         "FreeType version: %d.%d.%d\n", FREETYPE_MAJOR, FREETYPE_MINOR, FREETYPE_PATCH);
 }
 
+/*!
+ * @brief Get using FreeType credit text.
+ * @ingroup utility_api
+ * @param[out] (*str) FreeType credit string.
+ * @note The minimum string length required can be obtained with `OpenFontRender::CREDIT_STRING_SIZE`.
+ * @attention An array of sufficient length must be passed as an argument.
+ */
 void OpenFontRender::getCredit(char *str) {
 	snprintf(str, OpenFontRender::CREDIT_STRING_SIZE,
 	         "Portions of this software are copyright (c) < %d.%d.%d > The FreeTypeProject (www.freetype.org).  All rights reserved.\n",
 	         FREETYPE_MAJOR, FREETYPE_MINOR, FREETYPE_PATCH);
 }
 
+/*!
+ * @brief Set debug output level.
+ * @param[out] (level) Debug level.
+ * @ingroup utility_api
+ * @note The OFR_DEBUG_LEVEL enumeration is recommended for specifying the debug level.
+ * @note Multiple levels can be specified for debugging levels simultaneously using the `OR` operation.
+ */
 void OpenFontRender::setDebugLevel(uint8_t level) {
 	_debug_level = level;
 }
@@ -814,13 +1241,14 @@ void OpenFontRender::setDebugLevel(uint8_t level) {
 //  ( Direct calls are deprecated. )
 //
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
+/*! \cond PRIVATE */
 
 void OpenFontRender::set_drawPixel(std::function<void(int32_t, int32_t, uint16_t)> user_func) {
 	_drawPixel = user_func;
 }
 void OpenFontRender::set_drawFastHLine(std::function<void(int32_t, int32_t, int32_t, uint16_t)> user_func) {
-	_drawFastHLine            = user_func;
-	_enable_optimized_drawing = true; // Enable optimized drawing method
+	_drawFastHLine                  = user_func;
+	_flags.enable_optimized_drawing = true; // Enable optimized drawing method
 }
 void OpenFontRender::set_startWrite(std::function<void(void)> user_func) {
 	_startWrite = user_func;
@@ -832,6 +1260,8 @@ void OpenFontRender::set_printFunc(std::function<void(const char *)> user_func) 
 	// This function is static member method
 	g_Print = user_func;
 }
+
+/*! \endcond */
 
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 //
@@ -854,7 +1284,7 @@ FT_Error OpenFontRender::loadFont(enum OFR::LoadFontFrom from) {
 	}
 
 	// 現在の引数は適当
-	error = FTC_Manager_New(g_FtLibrary, _max_faces, _max_sizes, _max_bytes, &ftc_face_requester, &info, &_ftc_manager);
+	error = FTC_Manager_New(g_FtLibrary, _cache.max_faces, _cache.max_sizes, _cache.max_bytes, &ftc_face_requester, &info, &_ftc_manager);
 	if (error) {
 		debugPrintf((_debug_level & OFR_ERROR), "FTC_Manager_New error: 0x%02X\n", error);
 		return error;
@@ -880,9 +1310,9 @@ FT_Error OpenFontRender::loadFont(enum OFR::LoadFontFrom from) {
 
 	if (FT_HAS_VERTICAL(face) == 0) {
 		// Current font does NOT support vertical layout
-		_font.support_vertical = false;
+		_flags.support_vertical = false;
 	} else {
-		_font.support_vertical = true;
+		_flags.support_vertical = true;
 	}
 
 	return FT_Err_Ok;
@@ -892,17 +1322,15 @@ uint32_t OpenFontRender::getFontMaxHeight() {
 	FT_Error error;
 	FT_Face face;
 	FTC_ScalerRec scaler;
-	FT_Size asize                      = NULL;
-	static uint32_t max_height         = 0;
-	static unsigned int prev_font_size = 0;
+	FT_Size asize = NULL;
 
-	if (prev_font_size == _font.size) {
-		return max_height;
+	if (_saved_state.prev_font_size == _text.size) {
+		return _saved_state.prev_max_font_height;
 	}
 
 	scaler.face_id = &_face_id;
 	scaler.width   = 0;
-	scaler.height  = _font.size;
+	scaler.height  = _text.size;
 	scaler.pixel   = true;
 	scaler.x_res   = 0;
 	scaler.y_res   = 0;
@@ -916,27 +1344,26 @@ uint32_t OpenFontRender::getFontMaxHeight() {
 
 	int bbox_ymax = FT_MulFix(face->bbox.yMax, face->size->metrics.y_scale) >> 6;
 	int bbox_ymin = FT_MulFix(face->bbox.yMin, face->size->metrics.y_scale) >> 6;
-	max_height    = (bbox_ymax - bbox_ymin);
 
-	prev_font_size = _font.size;
-	return max_height;
+	_saved_state.prev_max_font_height = (bbox_ymax - bbox_ymin);
+	_saved_state.prev_font_size       = _text.size;
+	return _saved_state.prev_max_font_height;
 }
 
 void OpenFontRender::draw2screen(FT_BitmapGlyph glyph, uint32_t x, uint32_t y, uint16_t fg, uint16_t bg) {
 	_startWrite();
 
-	if (_enable_optimized_drawing) {
+	if (_flags.enable_optimized_drawing) {
 		// Start of new render code for efficient rendering of pixel runs to a TFT
 		// Background fill code commented out thus //-bg-// as it is only filling the glyph bounding box
 		// Code for this will need to track the last background end x as glyphs may overlap
 		// Ideally need to keep track of the cursor position and use the font height for the fill box
 		// Could also then use a line buffer for the glyph image (entire glyph buffer could be large!)
 
-		int16_t fxs = x;
-		uint32_t fl = 0;
-		//-bg-//int16_t  bxs = x;
-		//-bg-//uint32_t bl = 0;
-		//-bg-//int16_t  bx = 0;
+		int16_t fxs = x; // Start point of foreground x-coordinate
+		uint32_t fl = 0; // Foreground line length
+		int16_t bxs = x; // Start point of background x-coordinate
+		uint32_t bl = 0; // Background line length
 
 		for (int32_t _y = 0; _y < glyph->bitmap.rows; ++_y) {
 			for (int32_t _x = 0; _x < glyph->bitmap.width; ++_x) {
@@ -944,7 +1371,10 @@ void OpenFontRender::draw2screen(FT_BitmapGlyph glyph, uint32_t x, uint32_t y, u
 				debugPrintf((_debug_level & OFR_DEBUG) ? OFR_RAW : OFR_NONE, "%c", (alpha == 0x00 ? ' ' : 'o'));
 
 				if (alpha) {
-					//-bg-//if (bl) { _drawFastHLine( bxs, _y + y - glyph->top, bl, bg); bl = 0; }
+					if (bl) {
+						_drawFastHLine(bxs, _y + y - glyph->top, bl, bg);
+						bl = 0;
+					}
 					if (alpha != 0xFF) {
 						// Draw anti-aliasing area
 						if (fl) {
@@ -967,10 +1397,14 @@ void OpenFontRender::draw2screen(FT_BitmapGlyph glyph, uint32_t x, uint32_t y, u
 						_drawFastHLine(fxs, _y + y - glyph->top, fl, fg);
 						fl = 0;
 					}
-					//-bg-//if (!_transparent_background) {
-					//-bg-//  if (bl==0) bxs = _x + x + glyph->left;
-					//-bg-//  bl++;
-					//-bg-//}
+					if (_text.bg_fill_method == BgFillMethod::Minimum) {
+						if (_saved_state.drawn_bg_point.x <= (x + _x)) {
+							if (bl == 0) {
+								bxs = _x + x + glyph->left;
+							}
+							bl++;
+						}
+					}
 				}
 				// End of new render code
 			}
@@ -978,8 +1412,10 @@ void OpenFontRender::draw2screen(FT_BitmapGlyph glyph, uint32_t x, uint32_t y, u
 			if (fl) {
 				_drawFastHLine(fxs, _y + y - glyph->top, fl, fg);
 				fl = 0;
+			} else if (bl) {
+				_drawFastHLine(bxs, _y + y - glyph->top, bl, bg);
+				bl = 0;
 			}
-			//-bg-//else if (bl) { _drawFastHLine( bxs, _y + y - glyph->top, bl, bg); bl = 0; }
 			debugPrintf((_debug_level & OFR_DEBUG) ? OFR_RAW : OFR_NONE, "\n");
 		}
 	} else {
@@ -992,6 +1428,10 @@ void OpenFontRender::draw2screen(FT_BitmapGlyph glyph, uint32_t x, uint32_t y, u
 
 				if (alpha) {
 					_drawPixel(_x + x + glyph->left, _y + y - glyph->top, alphaBlend(alpha, fg, bg));
+				} else if (_text.bg_fill_method == BgFillMethod::Minimum) {
+					if (_saved_state.drawn_bg_point.x <= (x + _x)) {
+						_drawPixel(_x + x + glyph->left, _y + y - glyph->top, bg);
+					}
 				}
 			}
 			debugPrintf((_debug_level & OFR_DEBUG) ? OFR_RAW : OFR_NONE, "\n");
@@ -1055,6 +1495,7 @@ uint16_t OpenFontRender::alphaBlend(uint8_t alpha, uint16_t fgc, uint16_t bgc) {
 //  (Use only within this file.)
 //
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
+/*! \cond PRIVATE */
 
 FT_Error ftc_face_requester(FTC_FaceID face_id, FT_Library library, FT_Pointer request_data, FT_Face *aface) {
 	FT_Error error     = FT_Err_Ok;
@@ -1152,4 +1593,7 @@ void RenderTask(void *pvParameters) {
 	g_RenderTaskHandle = NULL;
 	vTaskDelete(NULL);
 }
+
+/*! \endcond */
+
 #endif

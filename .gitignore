@@ -5,3 +5,6 @@
 !/tools/ttf2bin/ttf2bin.py
 
 /src/.vscode
+/doc/html
+/docs
+/xml

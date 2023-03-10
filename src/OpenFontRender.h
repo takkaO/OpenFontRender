@@ -38,39 +38,62 @@
 //
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 
+/*!
+ * @brief An enumeration for specifying the debug log level.
+ */
 enum OFR_DEBUG_LEVEL {
-	OFR_NONE  = 0,
-	OFR_ERROR = 1,
-	OFR_INFO  = 2,
-	OFR_DEBUG = 4,
-	OFR_RAW   = 8,
+	OFR_NONE  = 0, ///< No output.
+	OFR_ERROR = 1, ///< Output only errors.
+	OFR_INFO  = 2, ///< Output some informations.
+	OFR_DEBUG = 4, ///< Output character rendering result.
+	OFR_RAW   = 8, ///< Use for internal.
 };
 
+/*!
+ * @brief An enumeration for specifying the text alignment.
+ * @see PREPARING figure
+ */
 enum class Align {
-	Left,	// = TopLeft
-	Center,	// = TopCenter
-	Right,	// = TopRight
-	TopLeft,
-	TopCenter,
-	TopRight,
-	MiddleLeft,
-	MiddleCenter,
-	MiddleRight,
-	BottomLeft,
-	BottomCenter,
-	BottomRight,
+	Left,         ///< Alias of "TopLeft"
+	Center,       ///< Alias of "TopCenter"
+	Right,        ///< Alias of "TopRight"
+	TopLeft,      ///< The cursor position is considered to be the top-left corner of the text box.
+	TopCenter,    ///< The cursor position is considered to be the top-center of the text box.
+	TopRight,     ///< The cursor position is considered to be the top-right corner of the text box.
+	MiddleLeft,   ///< The cursor position is considered to be the middle-left of the text box.
+	MiddleCenter, ///< The cursor position is considered to be the middle-center of the text box.
+	MiddleRight,  ///< The cursor position is considered to be the middle-right of the text box.
+	BottomLeft,   ///< The cursor position is considered to be the bottom-left corner of the text box.
+	BottomCenter, ///< The cursor position is considered to be the bottom-center of the text box.
+	BottomRight,  ///< The cursor position is considered to be the bottom-right corner of the text box.
 };
 
+/*!
+ * @brief An enumeration for specifying the background drawing method.
+ */
+enum class BgFillMethod {
+	None,    ///< Does not fill the background.
+	Minimum, ///< Fill in the smallest area that surrounds each character.
+	Block,   ///< Fill in the smallest area that surrounds the string.
+};
+
+/*!
+ * @brief An enumeration for specifying the direction in which characters are written.
+ */
 enum class Layout {
-	Horizontal,
-	Vertical
+	Horizontal, ///< Write from left to right.
+	Vertical    ///< Write from top to bottom.
 };
 
+/*!
+ * @brief An enumeration for specifying the whether to draw to screen.
+ */
 enum class Drawing {
-	Execute,
-	Skip
+	Execute, ///< The drawing process is executed and the screen will be updated.
+	Skip     ///< The drawing process is skiped and the screen will not be updated.
 };
 
+/*! \cond PRIVATE */
 namespace OFR {
 	/* USER DO NOT USE DIRECTORY IN THIS SCOPE ELEMENTS */
 	enum LoadFontFrom {
@@ -85,53 +108,121 @@ namespace OFR {
 		uint8_t face_index;  // face index (default is 0)
 	} FaceRec, *Face;
 };
+/*! \endcond */
 
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
 //
 //  Class definition
 //
 /*_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/*/
+
+/*!
+ * @brief Set function to draw pixel to screen.
+ * @param[in] (user_func) User function for draw pixel to screen.
+ * @ingroup rendering_api
+ * @note The function to be given must be a function like the one below that takes a specific argument.
+ * @code {.cpp}
+ * void example_function (int32_t x, int32_t y, uint16_t c)
+ * @endcode
+ * | Type    | Name | Description               |
+ * | ------- | :--: | ------------------------- |
+ * | int32_t |  x   | Draw position X           |
+ * | int32_t |  y   | Draw position Y           |
+ * | int32_t |  c   | Draw color (16 bit color) |
+ */
 #define setDrawPixel(F) set_drawPixel([&](int32_t x, int32_t y, uint16_t c) { return F(x, y, c); })
+/*!
+ * @brief Set function to fast draw horizontal line to screen. (Optional)
+ * @param[in] (user_func) User function for fast draw horizontal line to screen.
+ * @ingroup rendering_api
+ * @note If you set this function, drawing method will be optimized and improve speed.
+ * @code {.cpp}
+ * void example_function (int32_t x, int32_t y, int32_t w, uint16_t c)
+ * @endcode
+ * | Type    | Name | Description               |
+ * | ------- | :--: | ------------------------- |
+ * | int32_t |  x   | Draw position X           |
+ * | int32_t |  y   | Draw position Y           |
+ * | int32_t |  w   | Draw Length               |
+ * | int32_t |  c   | Draw color (16 bit color) |
+ */
 #define setDrawFastHLine(F) set_drawFastHLine([&](int32_t x, int32_t y, int32_t w, uint16_t c) { return F(x, y, w, c); })
+/*!
+ * @brief It is called only once at the beginning of a sequence of drawings. (Optional)
+ * @brief Certain libraries can occupy the bus during continuous drawing to increase the drawing speed.
+ * @param[in] (user_func) User function that call before draw to screen.
+ * @ingroup rendering_api
+ * @note If you set this function, drawing method will be optimized and improve speed.
+ * @code {.cpp}
+ * void example_function (void)
+ * @endcode
+ */
 #define setStartWrite(F) set_startWrite([&](void) { return F(); })
+/*!
+ * @brief It is called only once at the beginning of a sequence of drawings. (Optional)
+ * @brief Certain libraries can occupy the bus during continuous drawing to increase the drawing speed.
+ * @param[in] (user_func) User function that call after draw to screen.
+ * @ingroup rendering_api
+ * @note If you set this function, drawing method will be optimized and improve speed.
+ * @code {.cpp}
+ * void example_function (void)
+ * @endcode
+ */
 #define setEndWrite(F) set_endWrite([&](void) { return F(); })
+/*!
+ * @brief Specifies the standard output destination for the system. (Optional)
+ * @param[in] (user_func) User function for output message.
+ * @ingroup rendering_api
+ * @note The function to be given must be a function like the one below that takes a specific argument.
+ * @code {.cpp}
+ * void example_function (const char *s)
+ * @endcode
+ */
 #define setPrintFunc(F) set_printFunc([&](const char *s) { return F(s); })
 
 class OpenFontRender {
 public:
-	static const unsigned char MAIN_VERSION  = 1;
-	static const unsigned char MINER_VERSION = 1;
+	static const unsigned char MAIN_VERSION  = 1; ///< Open Font Render library main version.
+	static const unsigned char MINOR_VERSION = 1; ///< Open Font Render library minor version.
 
-	static const unsigned char CACHE_SIZE_NO_LIMIT    = 0;
-	static const unsigned char CACHE_SIZE_MINIMUM     = 1;
-	static const unsigned char FT_VERSION_STRING_SIZE = 32;
-	static const unsigned char CREDIT_STRING_SIZE     = 128;
+	static const unsigned char CACHE_SIZE_NO_LIMIT    = 0;   ///< FreeType cache size alias.
+	static const unsigned char CACHE_SIZE_MINIMUM     = 1;   ///< FreeType cache size alias.
+	static const unsigned char FT_VERSION_STRING_SIZE = 32;  ///< Minimum string length for FreeType version.
+	static const unsigned char CREDIT_STRING_SIZE     = 128; ///< Minimum string length for FreeType credit.
 
 	OpenFontRender();
 	void setUseRenderTask(bool enable);
 	void setRenderTaskStackSize(unsigned int stack_size);
+
 	void setCursor(int32_t x, int32_t y);
 	int32_t getCursorX();
 	int32_t getCursorY();
 	void seekCursor(int32_t delta_x, int32_t delta_y);
+
 	void setFontColor(uint16_t font_color);
+	void setBackgroundColor(uint16_t font_bgcolor);
 	void setFontColor(uint16_t font_color, uint16_t font_bgcolor);
+
 	void setFontColor(uint8_t r, uint8_t g, uint8_t b);
+	void setBackgroundColor(uint8_t r, uint8_t g, uint8_t b);
 	void setFontColor(uint8_t fr,
 	                  uint8_t fg,
 	                  uint8_t fb,
 	                  uint8_t br,
 	                  uint8_t bg,
 	                  uint8_t bb);
-	void setBackgroundColor(uint16_t font_bgcolor);
 	uint16_t getFontColor();
 	uint16_t getBackgroundColor();
 	void setFontSize(unsigned int pixel);
 	unsigned int getFontSize();
 	double setLineSpaceRatio(double line_space_ratio);
 	double getLineSpaceRatio();
+	void setBackgroundFillMethod(BgFillMethod method);
+	BgFillMethod getBackgroundFillMethod();
 	void setLayout(Layout layout);
 	Layout getLayout();
+	void setAlignment(Align align);
+	Align getAlignment();
 	void setCacheSize(unsigned int max_faces, unsigned int max_sizes, unsigned long max_bytes);
 
 	FT_Error loadFont(const unsigned char *data, size_t size, uint8_t target_face_index = 0);
@@ -191,6 +282,16 @@ public:
 	void getCredit(char *str);
 	void setDebugLevel(uint8_t level);
 
+	/*!
+	 * @brief Collectively set up screen control functions.
+	 * @tparam (T) Screen control class.
+	 * @param[in] (&drawer) Instance for screen control.
+	 * @ingroup render_api
+	 * @attention To use this function, it must be possible to call the following four methods on the instance given as the argument.
+	 * @attention `drawPixel(x, y, c)`, `drawFastHLine(x, y, w, c)`, `startWrite()`, `endWrite()`
+	 * @note This function only calls the following four methods internally.
+	 * @note setDrawPixel(), setDrawFastHLine(), setStartWrite(), setEndWrite()
+	 */
 	template <typename T>
 	void setDrawer(T &drawer) {
 		set_drawPixel([&](int32_t x, int32_t y, uint16_t c) { return drawer.drawPixel(x, y, c); });
@@ -206,6 +307,14 @@ public:
 	void set_endWrite(std::function<void(void)> user_func);
 
 	/* Static member method */
+	/*!
+	 * @brief Set up serial output control functions.
+	 * @tparam (T) Serial control class.
+	 * @param[in] (&output) Instance for serial control.
+	 * @ingroup utility_api
+	 * @attention To use this function, it must be possible to call the `print` method on the instance given as the argument.
+	 * @note This function only calls the setPrintFunc() method internally.
+	 */
 	template <typename T>
 	static void setSerial(T &output) {
 		set_printFunc([&](const char *s) { return output.print(s); });
@@ -213,9 +322,12 @@ public:
 	// Direct calls are deprecated.
 	static void set_printFunc(std::function<void(const char *)> user_func);
 
+	/*!
+	 * @brief Structure for handling cursor position.
+	 */
 	struct Cursor {
-		int32_t x;
-		int32_t y;
+		int32_t x; ///< x-coordinate
+		int32_t y; ///< y-coordinate
 	};
 
 private:
@@ -231,29 +343,43 @@ private:
 	std::function<void(void)> _startWrite;
 	std::function<void(void)> _endWrite;
 
-	bool _enable_optimized_drawing;
-
 	FTC_Manager _ftc_manager;
 	FTC_CMapCache _ftc_cmap_cache;
 	FTC_ImageCache _ftc_image_cache;
 
-	unsigned int _max_faces;
-	unsigned int _max_sizes;
-	unsigned long _max_bytes;
-
 	OFR::FaceRec _face_id;
-	struct Cursor _cursor;
 
-	struct FontParameter {
+	struct Flags {
+		bool enable_optimized_drawing;
+		bool support_vertical;
+	};
+	struct Flags _flags;
+
+	struct CacheParameter {
+		unsigned int max_faces;
+		unsigned int max_sizes;
+		unsigned long max_bytes;
+	};
+	struct CacheParameter _cache;
+
+	struct SavedStateVariables {
+		struct Cursor drawn_bg_point;
+		uint32_t prev_max_font_height;
+		unsigned int prev_font_size;
+	};
+	struct SavedStateVariables _saved_state;
+
+	struct TextParameter {
 		double line_space_ratio;
 		unsigned int size;
 		uint16_t fg_color;
 		uint16_t bg_color;
-		bool support_vertical;
+		struct Cursor cursor;
+		Align align;
+		BgFillMethod bg_fill_method;
+		Layout layout;
 	};
-	struct FontParameter _font;
-
-	Layout _layout;
+	struct TextParameter _text;
 
 	uint8_t _debug_level;
 };
