@@ -863,7 +863,7 @@ uint16_t OpenFontRender::drawString(const char *str,
 
 	switch (layout) {
 	case Layout::Horizontal:
-		return drawHString(str, x, y, fg, bg, Align::Left, Drawing::Execute, bbox, error);
+		return drawHString(str, x, y, fg, bg, _text.align, Drawing::Execute, bbox, error);
 	case Layout::Vertical:
 		// Not support now
 		return 0;
