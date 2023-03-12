@@ -34,6 +34,10 @@ void setup()
 	// render.setStartWrite(tft.startWrite);       // optional
 	// render.setEndWrite(tft.endWrite);           // optional
 
+	// render.setBackgroundFillMethod(BgFillMethod::None);	// default
+	// render.setBackgroundFillMethod(BgFillMethod::Minimum);
+	// render.setBackgroundFillMethod(BgFillMethod::Block);
+
 	unsigned long t_start = millis();
 
 	render.setFontColor(TFT_WHITE);

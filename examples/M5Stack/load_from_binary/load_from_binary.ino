@@ -31,6 +31,10 @@ void setup()
 	// render.setStartWrite(M5.Lcd.startWrite);       // optional
 	// render.setEndWrite(M5.Lcd.endWrite);           // optional
 
+	// render.setBackgroundFillMethod(BgFillMethod::None);	// default
+	// render.setBackgroundFillMethod(BgFillMethod::Minimum);
+	// render.setBackgroundFillMethod(BgFillMethod::Block);
+
 	unsigned long t_start = millis();
 
 	render.setFontColor(TFT_WHITE);

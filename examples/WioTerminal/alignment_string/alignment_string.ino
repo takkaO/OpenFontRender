@@ -34,41 +34,87 @@ void setup()
 	// render.setStartWrite(tft.startWrite);       // optional
 	// render.setEndWrite(tft.endWrite);           // optional
 
-	render.setFontSize(25);
+	render.setFontSize(30);
 }
 
 void loop()
 {
 	// put your main code here, to run repeatedly:
 
+	/* Refresh grid line */
+	refreshGridLine();
+
 	/* You can select text alignment! use printf function */
-	// Alignment Left
-	render.setCursor(0, 0);
-	render.setFontColor(TFT_WHITE);
-	render.printf("Hello\nWorld");
+	// Alignment Top
+	render.setCursor(10, 30);
+	render.setFontColor(TFT_CYAN);
+	render.setAlignment(Align::TopLeft);
+	render.printf("TopLeft");
 
-	// Alignment Center
-	render.setCursor(160, 95);
-	render.setFontColor(TFT_GREEN);
-	render.cprintf("完全なUnicode\nサポート");
+	render.setCursor(160, 120);
+	render.setFontColor(TFT_YELLOW);
+	render.setAlignment(Align::TopCenter);
+	render.printf("TopCenter");
 
-	// Alignment Right
-	render.setCursor(320, 190);
-	render.setFontColor(TFT_ORANGE);
-	render.rprintf("こんにちは\n世界");
+	render.setCursor(310, 210);
+	render.setFontColor(TFT_MAGENTA);
+	render.setAlignment(Align::TopRight);
+	render.printf("TopRight");
 
-	delay(1000);
-	// M5.Lcd.fillScreen(BLACK);
+	delay(1500);
 
-	/* You can select text alignment! use drawString function */
-	// Alignment Left
-	render.drawString("Hello\nWorld", 0, 0, TFT_MAGENTA, TFT_BLACK);
+	/* Refresh grid line */
+	refreshGridLine();
 
-	// Alignment Center
-	render.cdrawString("完全なUnicode\nサポート", 160, 95, TFT_YELLOW, TFT_BLACK);
+	/* You can select text alignment! use printf function */
+	// Alignment Middle
+	render.setCursor(10, 30);
+	render.setFontColor(TFT_CYAN);
+	render.setAlignment(Align::MiddleLeft);
+	render.printf("MiddleLeft");
 
-	// Alignment Right
-	render.rdrawString("こんにちは\n世界", 320, 190, TFT_CYAN, TFT_BLACK);
+	render.setCursor(160, 120);
+	render.setFontColor(TFT_YELLOW);
+	render.setAlignment(Align::MiddleCenter);
+	render.printf("MiddleCenter");
 
-	delay(1000);
+	render.setCursor(310, 210);
+	render.setFontColor(TFT_MAGENTA);
+	render.setAlignment(Align::MiddleRight);
+	render.printf("MiddleRight");
+
+	delay(1500);
+
+	/* Refresh grid line */
+	refreshGridLine();
+
+	/* You can select text alignment! use printf function */
+	// Alignment Bottom
+	render.setCursor(10, 30);
+	render.setFontColor(TFT_CYAN);
+	render.setAlignment(Align::BottomLeft);
+	render.printf("BottomLeft");
+
+	render.setCursor(160, 120);
+	render.setFontColor(TFT_YELLOW);
+	render.setAlignment(Align::BottomCenter);
+	render.printf("BottomCenter");
+
+	render.setCursor(310, 210);
+	render.setFontColor(TFT_MAGENTA);
+	render.setAlignment(Align::BottomRight);
+	render.printf("BottomRight");
+
+	delay(1500);
+}
+
+void refreshGridLine()
+{
+	M5.Lcd.fillScreen(TFT_BLACK);
+	M5.Lcd.drawFastVLine(10, 0, 240, TFT_DARKGREY);
+	M5.Lcd.drawFastVLine(160, 0, 240, TFT_DARKGREY);
+	M5.Lcd.drawFastVLine(310, 0, 240, TFT_DARKGREY);
+	M5.Lcd.drawFastHLine(0, 30, 320, TFT_DARKGREY);
+	M5.Lcd.drawFastHLine(0, 120, 320, TFT_DARKGREY);
+	M5.Lcd.drawFastHLine(0, 210, 320, TFT_DARKGREY);
 }
