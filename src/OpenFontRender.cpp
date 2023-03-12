@@ -435,7 +435,7 @@ FT_Error OpenFontRender::loadFont(const unsigned char *data, size_t size, uint8_
  * @param[in] (target_face_index) Load font index. Default is 0.
  * @return FreeType error code. 0 is success.
  * @ingroup rendering_api
- * @note SD card access is strongly hardware dependent, so for hardware other than M5Stack and Wio Terminal, 
+ * @note SD card access is strongly hardware dependent, so for hardware other than M5Stack and Wio Terminal,
  * @note you will need to add file manipulation functions to FileSupport.cpp/.h.
  * @note Any better solutions are welcome.
  */
@@ -540,7 +540,8 @@ uint16_t OpenFontRender::drawHString(const char *str,
 
 	// Rendering loop
 	while (unicode_q.size() != 0) {
-		FT_Vector offset = {0, 0};
+		FT_Vector offset       = {0, 0};
+		FT_Vector bearing_left = {0, 0};
 		std::queue<FT_UInt32> rendering_unicode_q;
 		FT_BBox bbox;
 		bbox.xMin = bbox.yMin = LONG_MAX;
@@ -549,6 +550,7 @@ uint16_t OpenFontRender::drawHString(const char *str,
 		detect_control_char   = false;
 		current_line_position = {x, y};
 		image_type.flags      = FT_LOAD_DEFAULT;
+		bool isLineFirstChar  = true;
 
 		// Glyph extraction
 		while (unicode_q.size() != 0 && detect_control_char == false) {
@@ -576,6 +578,15 @@ uint16_t OpenFontRender::drawHString(const char *str,
 				}
 
 				FT_Glyph_Get_CBox(aglyph, FT_GLYPH_BBOX_PIXELS, &glyph_bbox);
+				if (isLineFirstChar == true) {
+					// Get bearing X
+					FT_Face aface;
+					FTC_Manager_LookupFace(_ftc_manager, &_face_id, &aface);
+					bearing_left.x = (aface->glyph->metrics.horiBearingX >> 6);
+					// nothing to do for bearing.y
+					isLineFirstChar = false;
+				}
+
 				// Move coordinates on the grid
 				glyph_bbox.xMin += x;
 				glyph_bbox.xMax += x;
@@ -616,37 +627,56 @@ uint16_t OpenFontRender::drawHString(const char *str,
 			// Fallthrough
 		case Align::TopLeft:
 			// Nothing to do
+			offset.x -= bearing_left.x;
 			break;
 		case Align::MiddleLeft:
+			offset.x -= bearing_left.x;
 			offset.y += ((bbox.yMax - bbox.yMin) / 2);
 			break;
 		case Align::BottomLeft:
+			offset.x -= bearing_left.x;
 			offset.y += (bbox.yMax - bbox.yMin);
 			break;
 		case Align::Center:
 			// Fallthrough
 		case Align::TopCenter:
 			offset.x += ((bbox.xMax - bbox.xMin) / 2);
+			offset.x -= bearing_left.x;
+			current_line_position.x -= (bearing_left.x / 2);
 			break;
 		case Align::MiddleCenter:
 			offset.x += ((bbox.xMax - bbox.xMin) / 2);
+			offset.x -= bearing_left.x;
+			current_line_position.x -= (bearing_left.x / 2);
+
 			offset.y += ((bbox.yMax - bbox.yMin) / 2);
 			break;
 		case Align::BottomCenter:
 			offset.x += ((bbox.xMax - bbox.xMin) / 2);
+			offset.x -= bearing_left.x;
+			current_line_position.x -= (bearing_left.x / 2);
+
 			offset.y += (bbox.yMax - bbox.yMin);
 			break;
 		case Align::Right:
 			// Fallthrough
 		case Align::TopRight:
 			offset.x += (bbox.xMax - bbox.xMin);
+			offset.x -= bearing_left.x;
+			current_line_position.x -= bearing_left.x;
 			break;
 		case Align::MiddleRight:
 			offset.x += (bbox.xMax - bbox.xMin);
+			offset.x -= bearing_left.x;
+			current_line_position.x -= bearing_left.x;
+
 			offset.y += ((bbox.yMax - bbox.yMin) / 2);
 			break;
 		case Align::BottomRight:
 			offset.x += (bbox.xMax - bbox.xMin);
+			offset.x -= bearing_left.x;
+			current_line_position.x -= bearing_left.x;
+
 			offset.y += (bbox.yMax - bbox.yMin);
 			break;
 		default:
