@@ -286,7 +286,7 @@ public:
 	 * @brief Collectively set up screen control functions.
 	 * @tparam (T) Screen control class.
 	 * @param[in] (&drawer) Instance for screen control.
-	 * @ingroup render_api
+	 * @ingroup rendering_api
 	 * @attention To use this function, it must be possible to call the following four methods on the instance given as the argument.
 	 * @attention `drawPixel(x, y, c)`, `drawFastHLine(x, y, w, c)`, `startWrite()`, `endWrite()`
 	 * @note This function only calls the following four methods internally.

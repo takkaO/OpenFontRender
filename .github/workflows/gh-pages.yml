@@ -1,0 +1,151 @@
+name: Generate and deploy documents
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  ## コンテキスト
+  DOCUMENT_BRANCH: "gh-pages"
+
+jobs:
+  build:
+    name: Generate document
+    permissions:
+      actions: write
+      checks: write
+      contents: write
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Set current datetime as env variable
+        env:
+          TZ: 'Asia/Tokyo' # Set timezone
+        run: echo "CURRENT_DATETIME=$(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Set git-configs
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git config push.default current
+
+      - name: Set whether the branch is already existing to GITHUB_ENV
+        run: |
+          branch_is_existing=$(
+            git fetch origin ${{ env.DOCUMENT_BRANCH }} &&
+            echo true ||
+            echo false
+          )
+          echo "BRANCH_IS_EXISTING=${branch_is_existing}" >> $GITHUB_ENV
+
+      - name: Create branch if not exist
+        if: env.BRANCH_IS_EXISTING == 'false'
+        run: | 
+          git switch --orphan ${{ env.DOCUMENT_BRANCH }}
+          touch .gitkeep
+          git add .gitkeep
+          git commit -m "initial commit"
+          git push
+          git switch main
+
+      - name: Load environment variables from .env file
+        run: |
+          for line in $(grep -v '^#' ./doxygen/.env.pages); do
+            echo $line >> $GITHUB_ENV
+          done
+      
+      # - name: check env
+      #   run: printenv
+
+      - name: Update submodules
+        run: git submodule update --init -- "doxygen/doxygen-awesome-css"
+
+      - name: Make document (run docker compose) 
+        run: docker compose --env-file .env.pages up && docker compose down
+        working-directory: ./doxygen
+
+      - name: Run after process
+        run: docker run --rm --name ofr-doc-after -v $GITHUB_WORKSPACE:/usr/src/myapp -w /usr/src/myapp/doxygen python:3.9.16-bullseye python after_process.py $DOXYGEN_HTML_OUTPUT_DIR
+
+      - name: Change owner
+        run: | 
+          sudo chown -R runner:docker ./$DOXYGEN_HTML_OUTPUT_DIR
+          sudo chown -R runner:docker ./xml
+
+      - name: Add Stash
+        run: |
+          git add ./$DOXYGEN_HTML_OUTPUT_DIR
+          git stash push -- ./$DOXYGEN_HTML_OUTPUT_DIR
+
+      - name: Reset changes
+        run: git reset --hard
+      
+      - name: Switch to document branch
+        run: git switch ${{ env.DOCUMENT_BRANCH }}
+            
+      - name: Remove unnecessary files
+        run: git clean -df
+      
+      # - name: ls
+      #   run: ls -all
+      
+      - name: Apply stash
+        run: git checkout stash -- ./$DOXYGEN_HTML_OUTPUT_DIR
+      
+      - name: Commit and push
+        continue-on-error: true
+        run: |
+          git add $DOXYGEN_HTML_OUTPUT_DIR/
+          git commit -m "$CURRENT_DATETIME"
+          git push
+
+  deploy:
+    name: Deploy pages
+    needs: build
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Load environment variables from .env file
+        run: |
+          for line in $(grep -v '^#' ./doxygen/.env.pages); do
+            echo $line >> $GITHUB_ENV
+          done
+      
+      - name: Switch to document branch
+        run: git switch ${{ env.DOCUMENT_BRANCH }}
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+      
+      # - name: check env
+      #   run: printenv
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          # Upload entire repository
+          path: ${{ env.DOXYGEN_HTML_OUTPUT_DIR }}
+          #path: "./testpages"
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
+
+
+
