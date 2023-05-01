@@ -51,7 +51,7 @@ jobs:
           git add .gitkeep
           git commit -m "initial commit"
           git push
-          git switch main
+          git switch master
 
       - name: Load environment variables from .env file
         run: |
