@@ -30,6 +30,18 @@
 - [freetype 2.8.1 | DirectAdmin Forums](https://forum.directadmin.com/threads/freetype-2-8-1.55304/)
 
 
+### GitHub Actions
+
+- [Git Hub Actions入門](https://zenn.dev/hashito/articles/7c292f966c0b59)
+- [【GitHub Actions】どのようなときに actions/checkout@v2 を使用するのか](https://teratail.com/questions/06z9r8qi6eoq0x)
+- [GitHub Actions上でgit commitするときにgit userをどうするか - Qiita](https://qiita.com/thaim/items/3d1a4d09ec4a7d8844ce)
+- [GitHub PagesのデプロイにCustom GitHub Actions Workflows (beta) を試す : ビジネスとIT活用に役立つ情報（株式会社アーティス）](https://www.asobou.co.jp/blog/web/github-pages)
+- [[GitHub Actions] 指定のBranchの存在チェックをする（git-fetchコマンド） | DevelopersIO](https://dev.classmethod.jp/articles/github-actions-check-if-specific-branch-is-existing/)
+- [新しいGitHub Pagesのデプロイ方法を試す](https://zenn.dev/zozotech/articles/f2509a21b768ed)
+- [GitHub Actionsでジョブ間で値を共有する方法](https://zenn.dev/dehio3/articles/4e9ef9a2d87ee5)
+- [GithubActionsで環境変数を理解する。](https://zenn.dev/hashito/articles/aef4de448f341b)
+
+
 ### Other
 
 - [Deleting a task and erasing it's handler - FreeRTOS](https://www.freertos.org/FreeRTOS_Support_Forum_Archive/October_2015/freertos_Deleting_a_task_and_erasing_its_handler_bb9bbcdbj.html)
@@ -43,3 +55,4 @@
 - [PowerShell/ファイルへの上書きと追記方法・Set-Content,Add-Content - Windowsと暮らす](https://win.just4fun.biz/?PowerShell/%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%B8%E3%81%AE%E4%B8%8A%E6%9B%B8%E3%81%8D%E3%81%A8%E8%BF%BD%E8%A8%98%E6%96%B9%E6%B3%95%E3%83%BBSet-Content%2CAdd-Content)
 - [PowerShell 文字列を結合するサンプル | ITSakura](https://itsakura.com/powershell-string#s3)
 - [【PowerShell】文字列に改行を含める - Muni Bus](https://munibus.hatenablog.com/entry/2020/08/04/235440)
+- [docker-compose で複数環境を構築するときの設定をなるべく DRY に書く - ikasama over technology](https://ikasamak503.hatenablog.com/entry/dry-docker-compose-yaml)
