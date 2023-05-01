@@ -8,12 +8,12 @@ services:
     command: >
         PROJECT_NAME="Open Font Render"
         PROJECT_NUMBER=1.1
-        HTML_OUTPUT="docs"
+        HTML_OUTPUT=${DOXYGEN_HTML_OUTPUT_DIR}
         OUTPUT_LANGUAGE=Japanese-en
         GENERATE_TREEVIEW=YES
         MARKDOWN_SUPPORT=YES
         GENERATE_LATEX=NO
-        GENERATE_XML=YES
+        GENERATE_XML=YES 
         HTML_COLORSTYLE=TOGGLE
         USE_MDFILE_AS_MAINPAGE="README.md"
         HTML_EXTRA_STYLESHEET=./doxygen/doxygen-awesome-css/doxygen-awesome.css

@@ -1,9 +1,15 @@
 import re
 import glob
+import sys
 import xml.etree.ElementTree as ET 
 
 def main():
-	modifyIndexHtml()
+	args = sys.argv
+	if len(args) < 2:
+		modifyIndexHtml()
+	else:
+		modifyIndexHtml(args[1])
+
 	updateKeywordTxt()
 	updateLibraryProperty()
 
@@ -73,9 +79,9 @@ def updateKeywordTxt():
 	print("Done!")
 
 
-def modifyIndexHtml():
+def modifyIndexHtml(output_dir="docs"):
 	print("\tModify 'index.html' ... ", end="")
-	target = "../docs/index.html"
+	target = "../" + output_dir + "/index.html"
 
 	html = ""
 	with open(target, "r", encoding="utf8") as f:
