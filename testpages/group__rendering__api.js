@@ -1,0 +1,27 @@
+var group__rendering__api =
+[
+    [ "setDrawFastHLine", "group__rendering__api.html#ga4d7959a27401d7fc93d9f1404fc5017e", null ],
+    [ "setDrawPixel", "group__rendering__api.html#ga57b34f355cd8b27a53bcf832a6516094", null ],
+    [ "setEndWrite", "group__rendering__api.html#ga9d27434e0327307ef159b85e1f998fb7", null ],
+    [ "setPrintFunc", "group__rendering__api.html#ga592cef4545e38e070c1f7525ca0c63fe", null ],
+    [ "setStartWrite", "group__rendering__api.html#gaff23f0e807dad34092ec1df82cff4532", null ],
+    [ "OpenFontRender::calculateBoundingBox", "group__rendering__api.html#ga6854d1b37aae5c2ed6f82b4c2d076610", null ],
+    [ "OpenFontRender::calculateBoundingBoxFmt", "group__rendering__api.html#gab6e2c32307cb6cb38ce8df7803cc6360", null ],
+    [ "OpenFontRender::calculateFitFontSize", "group__rendering__api.html#ga09d9c7fd700a2b84b25d3dd6fac9aceb", null ],
+    [ "OpenFontRender::calculateFitFontSizeFmt", "group__rendering__api.html#ga0d7c03d367320a39e784b9d8264605cc", null ],
+    [ "OpenFontRender::cdrawString", "group__rendering__api.html#gaa5e33a310bfff258c2acf7affaa5c462", null ],
+    [ "OpenFontRender::cprintf", "group__rendering__api.html#ga4252d0981e80ce0eb62b31b99554627a", null ],
+    [ "OpenFontRender::drawChar", "group__rendering__api.html#gacc4f4b62c4b874081f5435d9a2c39632", null ],
+    [ "OpenFontRender::drawHString", "group__rendering__api.html#gabbf28be9dfb94a87e6e43c69053189aa", null ],
+    [ "OpenFontRender::drawString", "group__rendering__api.html#ga42d0361c970a68c61dd1098072107e07", null ],
+    [ "OpenFontRender::getTextHeight", "group__rendering__api.html#gaff81ffa2a57039164533bfb802880a75", null ],
+    [ "OpenFontRender::getTextWidth", "group__rendering__api.html#gaaf50302a79aa0180c36b4c7b7c90266f", null ],
+    [ "OpenFontRender::loadFont", "group__rendering__api.html#gaaffbacb36524a29d14b144c587d887d3", null ],
+    [ "OpenFontRender::loadFont", "group__rendering__api.html#ga8c26adc76fb4d8ac03504ed4314a0a16", null ],
+    [ "OpenFontRender::printf", "group__rendering__api.html#ga39764d61d73b677d580cf25007266077", null ],
+    [ "OpenFontRender::rdrawString", "group__rendering__api.html#ga4be901ded5a68241891b8237f84044bd", null ],
+    [ "OpenFontRender::rprintf", "group__rendering__api.html#ga6a91479f07f3f111bdfc90db63c0765c", null ],
+    [ "OpenFontRender::setCacheSize", "group__rendering__api.html#gaf2b8584865931962e3ee7e1a83a2a04c", null ],
+    [ "OpenFontRender::setDrawer", "group__rendering__api.html#ga0914941330a7b672fcc2ab1745984c48", null ],
+    [ "OpenFontRender::unloadFont", "group__rendering__api.html#ga2833534c3ce6bbde86cfb8fa9eecfeca", null ]
+];

@@ -1,0 +1,9 @@
+<map id="OpenFontRender::setFontSize" name="OpenFontRender::setFontSize">
+<area shape="rect" id="node1" title="Set the font size for rendering." alt="" coords="487,123,681,149"/>
+<area shape="rect" id="node2" href="$group__rendering__api.html#ga6854d1b37aae5c2ed6f82b4c2d076610" title="Calculate text bounding box." alt="" coords="260,73,439,113"/>
+<area shape="rect" id="node6" href="$group__rendering__api.html#ga09d9c7fd700a2b84b25d3dd6fac9aceb" title="Calculates the maximum font size that will fit the specified string and the specified rectangle." alt="" coords="260,148,439,188"/>
+<area shape="rect" id="node3" href="$group__rendering__api.html#gab6e2c32307cb6cb38ce8df7803cc6360" title="Calculate text bounding box with format specifier." alt="" coords="19,5,198,45"/>
+<area shape="rect" id="node4" href="$group__rendering__api.html#gaff81ffa2a57039164533bfb802880a75" title="Calculate text height." alt="" coords="5,70,212,95"/>
+<area shape="rect" id="node5" href="$group__rendering__api.html#gaaf50302a79aa0180c36b4c7b7c90266f" title="Calculate text width." alt="" coords="7,119,210,145"/>
+<area shape="rect" id="node7" href="$group__rendering__api.html#ga0d7c03d367320a39e784b9d8264605cc" title="Calculates the maximum font size that will fit the specified format string and the specified rectangl..." alt="" coords="19,169,198,209"/>
+</map>
