@@ -24,7 +24,7 @@ Clone this repository into Arduino library folder.
 
 See **[GitHub Pages](https://takkao.github.io/OpenFontRender/)** for a list of available APIs.
 Bellow is only a part of the sample code.  
-More detailed examples can be found in [examples]([/examples/](https://github.com/takkaO/OpenFontRender/tree/master/examples)).
+More detailed examples can be found in [examples](./examples).
 
 #### Load from array (Wio Terminal)
 
