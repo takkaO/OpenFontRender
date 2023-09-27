@@ -11,58 +11,30 @@
 #ifndef FILE_SUPPORT_H
 #define FILE_SUPPORT_H
 
-#include <list>
+#include <cstddef>
 
-#if defined(ARDUINO_BOARD)
-	#if defined(ARDUINO_M5Stack_Core_ESP32) || defined(ARDUINO_M5STACK_FIRE)
-		#define ARDUINO_M5_SERIES
-	#elif defined(ARDUINO_M5STACK_CORE2) || defined(ARDUINO_M5STACK_Tough)
-		#define ARDUINO_M5_SERIES
-	#elif defined(ARDUINO_M5Stick_C) || defined(ARDUINO_M5Stick_C_PLUS)
-		#define ARDUINO_M5_SERIES
-	#endif
-#endif
+// #if defined(ARDUINO_M5_SERIES)
+// 	#include <SD.h>
+// 	#include <SPIFFS.h>
+// #endif
 
-#if defined(ARDUINO_M5_SERIES)
-	#include <SD.h>
-	#include <SPIFFS.h>
-#endif
+// #if defined(ARDUINO_WIO_TERMINAL)
+// 	#include <SPI.h>
+// 	#include <Seeed_Arduino_FS.h>
+// #endif
 
-#if defined(ARDUINO_WIO_TERMINAL)
-	#include <SPI.h>
-	#include <Seeed_Arduino_FS.h>
-#endif
+#define FT_FILE void
+#define ft_fclose OFR_fclose
+#define ft_fopen OFR_fopen
+#define ft_fread OFR_fread
+#define ft_fseek OFR_fseek
+#define ft_ftell OFR_ftell
 
-#if defined(ARDUINO_WIO_TERMINAL) || defined(ARDUINO_M5_SERIES)
-
-	// TODO: want to make the program more abstract and common.
-
-	#define FT_FILE fileclass_t
-	#define ft_fclose ffsupport_fclose
-	#define ft_fopen ffsupport_fopen
-	#define ft_fread ffsupport_fread
-	#define ft_fseek ffsupport_fseek
-	#define ft_ftell ffsupport_ftell
-
-typedef struct {
-	File _fstream;
-} fileclass_t;
-
-void ffsupport_setffs(fs::FS &ffs);
-fileclass_t *ffsupport_fopen(const char *Filename, const char *mode);
-void ffsupport_fclose(fileclass_t *stream);
-size_t ffsupport_fread(void *ptr, size_t size, size_t nmemb, fileclass_t *stream);
-int ffsupport_fseek(fileclass_t *stream, long int offset, int whence);
-long int ffsupport_ftell(fileclass_t *stream);
-
-#else
-	#define FT_FILE FILE
-	#define ft_fclose fclose
-	#define ft_fopen fopen
-	#define ft_fread fread
-	#define ft_fseek fseek
-	#define ft_ftell ftell
-#endif
+void OFR_fclose(FT_FILE *stream) __attribute__((weak));
+FT_FILE *OFR_fopen(const char *filename, const char *mode) __attribute__((weak));
+size_t OFR_fread(void *ptr, size_t size, size_t nmemb, FT_FILE *stream) __attribute__((weak));
+int OFR_fseek(FT_FILE *stream, long int offset, int whence) __attribute__((weak));
+long int OFR_ftell(FT_FILE *stream) __attribute__((weak));
 
 #ifdef CONFIG_SPIRAM_SUPPORT
 	#define ft_scalloc ps_calloc
