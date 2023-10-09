@@ -8,3 +8,7 @@
 /doc/html
 /docs
 /xml
+
+esp32.svd
+debug.cfg
+debug_custom.json

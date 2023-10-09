@@ -3,6 +3,10 @@
 //
 //  Copyright (c) 2021 takkaO
 //
+//  If you use, modify, or redistribute this file independently
+//  of the original repository, this program is licensed under
+//  the MIT License.
+//
 //  If you use, modify or redistribute this file as part of
 //  the original repository, please follow the repository's license.
 //
@@ -14,7 +18,7 @@
 #include <SD.h>
 #include <list>
 
-std::list<File> ofr_file_list;
+std::list<File> ofr_file_list; // For multiple file loading
 
 FT_FILE *OFR_fopen(const char *filename, const char *mode) {
 	File f = SD.open(filename, mode);

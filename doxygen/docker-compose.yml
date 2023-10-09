@@ -7,23 +7,30 @@ services:
       - ../:/doxygen
     command: >
         PROJECT_NAME="Open Font Render"
-        PROJECT_NUMBER=1.1
+        PROJECT_NUMBER=1.2
         HTML_OUTPUT=${DOXYGEN_HTML_OUTPUT_DIR}
         OUTPUT_LANGUAGE=Japanese-en
         GENERATE_TREEVIEW=YES
         MARKDOWN_SUPPORT=YES
         GENERATE_LATEX=NO
-        GENERATE_XML=YES 
+        GENERATE_XML=YES
         HTML_COLORSTYLE=TOGGLE
+        ENABLE_PREPROCESSING=YES
+        MACRO_EXPANSION=YES
+        EXPAND_ONLY_PREDEF=YES
+        PREDEFINED=__attribute__\(x\)=
         USE_MDFILE_AS_MAINPAGE="README.md"
         HTML_EXTRA_STYLESHEET=./doxygen/doxygen-awesome-css/doxygen-awesome.css
         INPUT="
           ./README.md \
           ./REFERENCE_SITES.md \
+          ./manuals/pages.md \
+          ./manuals/HOW_TO_OVERWRITE_FS_FUNC.md \
           ./src/module_description.h \
           ./src/OpenFontRender.cpp \
           ./src/OpenFontRender.h \
           ./src/FileSupport.cpp \
           ./src/FileSupport.h \
+          ./src/ofrfs/* \
           "
     container_name: ofr-doc-container

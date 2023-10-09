@@ -2,10 +2,43 @@
 #include <M5Unified.h>
 #include <SD.h>
 
-#include "OpenFontRender.h"			 // Include after M5Unified.h
-#include "ofrfs/M5Stack_SD_Preset.h" // Use preset
+#include "OpenFontRender.h" // Include after M5Unified.h
 
 OpenFontRender render;
+
+/*=== Overwrite SD (File) operation methods BEGIN ===*/
+File myFile;
+
+FT_FILE *OFR_fopen(const char *filename, const char *mode)
+{
+	myFile = SD.open(filename, mode);
+	return &myFile;
+}
+
+void OFR_fclose(FT_FILE *stream)
+{
+	// myFile.close()
+	((File *)stream)->close();
+}
+
+size_t OFR_fread(void *ptr, size_t size, size_t nmemb, FT_FILE *stream)
+{
+	// myFile.read()
+	return ((File *)stream)->read((uint8_t *)ptr, size * nmemb);
+}
+
+int OFR_fseek(FT_FILE *stream, long int offset, int whence)
+{
+	// myFile.seek()
+	return ((File *)stream)->seek(offset, (SeekMode)whence);
+}
+
+long int OFR_ftell(FT_FILE *stream)
+{
+	// myFile.position()
+	return ((File *)stream)->position();
+}
+/*=== Overwrite SD (File) operation methods END ===*/
 
 void setup()
 {

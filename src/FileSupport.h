@@ -13,16 +13,6 @@
 
 #include <cstddef>
 
-// #if defined(ARDUINO_M5_SERIES)
-// 	#include <SD.h>
-// 	#include <SPIFFS.h>
-// #endif
-
-// #if defined(ARDUINO_WIO_TERMINAL)
-// 	#include <SPI.h>
-// 	#include <Seeed_Arduino_FS.h>
-// #endif
-
 #define FT_FILE void
 #define ft_fclose OFR_fclose
 #define ft_fopen OFR_fopen
@@ -30,11 +20,11 @@
 #define ft_fseek OFR_fseek
 #define ft_ftell OFR_ftell
 
-void OFR_fclose(FT_FILE *stream) __attribute__((weak));
-FT_FILE *OFR_fopen(const char *filename, const char *mode) __attribute__((weak));
-size_t OFR_fread(void *ptr, size_t size, size_t nmemb, FT_FILE *stream) __attribute__((weak));
-int OFR_fseek(FT_FILE *stream, long int offset, int whence) __attribute__((weak));
-long int OFR_ftell(FT_FILE *stream) __attribute__((weak));
+void OFR_fclose(FT_FILE *stream);
+FT_FILE *OFR_fopen(const char *filename, const char *mode);
+size_t OFR_fread(void *ptr, size_t size, size_t nmemb, FT_FILE *stream);
+int OFR_fseek(FT_FILE *stream, long int offset, int whence);
+long int OFR_ftell(FT_FILE *stream);
 
 #ifdef CONFIG_SPIRAM_SUPPORT
 	#define ft_scalloc ps_calloc

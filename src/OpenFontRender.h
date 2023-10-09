@@ -183,7 +183,7 @@ namespace OFR {
 class OpenFontRender {
 public:
 	static const unsigned char MAIN_VERSION  = 1; ///< Open Font Render library main version.
-	static const unsigned char MINOR_VERSION = 1; ///< Open Font Render library minor version.
+	static const unsigned char MINOR_VERSION = 2; ///< Open Font Render library minor version.
 
 	static const unsigned char CACHE_SIZE_NO_LIMIT    = 0;   ///< FreeType cache size alias.
 	static const unsigned char CACHE_SIZE_MINIMUM     = 1;   ///< FreeType cache size alias.
