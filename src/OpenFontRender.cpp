@@ -435,8 +435,8 @@ FT_Error OpenFontRender::loadFont(const unsigned char *data, size_t size, uint8_
  * @param[in] (target_face_index) Load font index. Default is 0.
  * @return FreeType error code. 0 is success.
  * @ingroup rendering_api
- * @note SD card access is strongly hardware dependent, so for hardware other than M5Stack and Wio Terminal,
- * @note you will need to add file manipulation functions to FileSupport.cpp/.h.
+ * @note SD card access is strongly hardware dependent, so you will need to include preset in `ofrfs` or
+ * @note implement custom file I/O code (see Manuals).
  * @note Any better solutions are welcome.
  */
 FT_Error OpenFontRender::loadFont(const char *fpath, uint8_t target_face_index) {
@@ -482,223 +482,244 @@ void OpenFontRender::unloadFont() {
  * @note Direct calls to this function are not recommended. This is because it complicates the call.
  * @note Instead, it is recommended to use the `printf` and `drawString` functions in combination with optional methods such as `setFontColor` and `setAlignment` function.
  */
-uint16_t OpenFontRender::drawHString(
-	const char *str,
-	int32_t x,
-	int32_t y,
-	uint16_t fg,
-	uint16_t bg,
-	Align align,
-	Drawing drawing,
-	FT_BBox &abbox,
-	FT_Error &error
-){
-	// 1. Get font metrics first
-    FT_Size asize = NULL;
-    FTC_ScalerRec scaler;
-    scaler.face_id = &_face_id;
-    scaler.width = 0;
-    scaler.height = _text.size;
-    scaler.pixel = true;
-    
-    error = FTC_Manager_LookupSize(_ftc_manager, &scaler, &asize);
-    if (error) return 0;
+uint16_t OpenFontRender::drawHString(const char *str,
+                                     int32_t x,
+                                     int32_t y,
+                                     uint16_t fg,
+                                     uint16_t bg,
+                                     Align align,
+                                     Drawing drawing,
+                                     FT_BBox &abbox,
+                                     FT_Error &error) {
 
- 	// Get charmap index once
-	FT_Int cmap_index = FT_Get_Charmap_Index(asize->face->charmap);
+	uint16_t written_char_num    = 0;
+	Cursor initial_position      = {x, y};
+	Cursor current_line_position = {x, y};
+	FT_Pos ascender              = 0;
+	bool detect_control_char     = false;
 
-	// Get metrics (convert from 26.6 fixed point)
-    int32_t ascender = asize->face->size->metrics.ascender >> 6;
-    int32_t descender = asize->face->size->metrics.descender >> 6;
-    
-    FTC_ImageTypeRec image_type;
-    image_type.face_id = scaler.face_id;
-    image_type.width = scaler.width;
-    image_type.height = scaler.height;
-    image_type.flags = FT_LOAD_DEFAULT;
+	abbox.xMin = abbox.yMin = LONG_MAX;
+	abbox.xMax = abbox.yMax = LONG_MIN;
 
-	uint16_t chars_written = 0;
+	FTC_ImageTypeRec image_type;
+	image_type.face_id = &_face_id;
+	image_type.width   = 0;
+	image_type.height  = _text.size;
+	image_type.flags   = FT_LOAD_DEFAULT;
 
-	// First decode all characters to Unicode
+	// decode UTF8
 	uint16_t unicode = '\0';
-	std::vector<uint16_t> unicode_chars;
-	uint16_t len = strlen(str);
-	uint16_t n = 0;
-	while (n < len) {
-		unicode = decodeUTF8((uint8_t *)str, &n, len - n);
-		if (unicode < 32 && unicode != '\n') {  // Skip control chars except newline
-			continue;
-		}
-		unicode_chars.push_back(unicode);
-	}
-
-	// Count number of lines by counting newlines
-	size_t num_lines = 1; // Start with 1 since even without newlines we have 1 line
-	for (uint16_t unicode : unicode_chars) {
-		if (unicode == '\n') {
-			num_lines++;
+	std::queue<FT_UInt32> unicode_q;
+	{
+		uint16_t len = (uint16_t)strlen(str);
+		uint16_t n   = 0;
+		while (n < len) {
+			unicode = decodeUTF8((uint8_t *)str, &n, len - n);
+			unicode_q.push(unicode);
 		}
 	}
 
-	// bool isFirstChar = true;
-	int32_t current_x = 0;
+	FT_Int cmap_index;
+	{
+		FT_Size asize = NULL;
+		FTC_ScalerRec scaler;
+		scaler.face_id = &_face_id;
+		scaler.width   = 0;
+		scaler.height  = _text.size;
+		scaler.pixel   = true;
+		scaler.x_res   = 0;
+		scaler.y_res   = 0;
 
-	std::vector<int32_t> lineWidths;
-	FT_BBox line_bbox; // Initialize a bounding box for the current line
-	line_bbox.xMin = INT32_MAX;
-	line_bbox.xMax = INT32_MIN;
-	bool isFirstChar = true;
-	int32_t maxLineWidth = 0;
-
-	for (size_t i = 0; i < unicode_chars.size(); ++i) {
-		uint16_t unicode = unicode_chars[i];
-
-		// Peek ahead to the next character
-		uint16_t next_unicode = (i + 1 < unicode_chars.size()) ? unicode_chars[i + 1] : '\0';
-
-		if (unicode == ' ' && next_unicode == '\n') {
-			continue; // Skip adding space if followed by a newline
+		error = FTC_Manager_LookupSize(_ftc_manager, &scaler, &asize);
+		if (error) {
+			return written_char_num;
 		}
+		cmap_index = FT_Get_Charmap_Index(asize->face->charmap);
+		ascender   = asize->face->size->metrics.ascender;
+	}
 
-		if (unicode == '\n') {
-			// Calculate line width
-			if (line_bbox.xMin <= line_bbox.xMax) {
-				int32_t lineWidth = line_bbox.xMax - line_bbox.xMin;
-				lineWidths.push_back(lineWidth);
-				if (lineWidth > maxLineWidth) {
-					maxLineWidth = lineWidth;
-					abbox.xMin = line_bbox.xMin;
-					abbox.xMax = line_bbox.xMax;
+	// Rendering loop
+	while (unicode_q.size() != 0) {
+		FT_Vector offset       = {0, 0};
+		FT_Vector bearing_left = {0, 0};
+		std::queue<FT_UInt32> rendering_unicode_q;
+		FT_BBox bbox;
+		bbox.xMin = bbox.yMin = LONG_MAX;
+		bbox.xMax = bbox.yMax = LONG_MIN;
+
+		detect_control_char   = false;
+		current_line_position = {x, y};
+		image_type.flags      = FT_LOAD_DEFAULT;
+		bool isLineFirstChar  = true;
+
+		// Glyph extraction
+		while (unicode_q.size() != 0 && detect_control_char == false) {
+			FT_Glyph aglyph;
+			FT_UInt glyph_index;
+			FT_BBox glyph_bbox;
+
+			unicode = unicode_q.front();
+			switch (unicode) {
+			case '\r':
+				[[fallthrough]]; // Fall Through
+			case '\n':
+				detect_control_char = true;
+				break;
+			default:
+				glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache,
+				                                   &_face_id,
+				                                   cmap_index,
+				                                   unicode);
+
+				error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
+				if (error) {
+					debugPrintf((_debug_level & OFR_ERROR), "FTC_ImageCache_Lookup error: 0x%02X\n", error);
+					return written_char_num;
 				}
+
+				FT_Glyph_Get_CBox(aglyph, FT_GLYPH_BBOX_PIXELS, &glyph_bbox);
+				if (isLineFirstChar == true) {
+					// Get bearing X
+					FT_Face aface;
+					FTC_Manager_LookupFace(_ftc_manager, &_face_id, &aface);
+					bearing_left.x = (aface->glyph->metrics.horiBearingX >> 6);
+					// nothing to do for bearing.y
+					isLineFirstChar = false;
+				}
+
+				// Move coordinates on the grid
+				glyph_bbox.xMin += x;
+				glyph_bbox.xMax += x;
+				glyph_bbox.yMin += y;
+				glyph_bbox.yMax += y;
+
+				// Merge bbox
+				bbox.xMin = std::min(bbox.xMin, glyph_bbox.xMin);
+				bbox.yMin = std::min(bbox.yMin, glyph_bbox.yMin);
+				bbox.xMax = std::max(bbox.xMax, glyph_bbox.xMax);
+				bbox.yMax = std::max(bbox.yMax, glyph_bbox.yMax);
+
+				x += (aglyph->advance.x >> 16);
+				rendering_unicode_q.push(unicode);
 			}
-			// Reset line_bbox for the next line
-			line_bbox.xMin = INT32_MAX;
-			line_bbox.xMax = INT32_MIN;
-			isFirstChar = true;
-			continue;
+			unicode_q.pop();
 		}
 
-		// Load and process glyph
-		FT_UInt glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache, &_face_id, cmap_index, unicode);
-		FT_Glyph aglyph;
-		error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
-		if (error) return 0;
-
-		// Get glyph's bounding box
-		FT_BBox glyph_bbox;
-		FT_Glyph_Get_CBox(aglyph, FT_GLYPH_BBOX_PIXELS, &glyph_bbox);
-
-		// Adjust for horizontal bearing if it's the first character in the line
-		if (isFirstChar) {
-			FT_Face aface;
-			error = FTC_Manager_LookupFace(_ftc_manager, &_face_id, &aface);
-			if (error) return 0;
-			int32_t horiBearingX = aface->glyph->metrics.horiBearingX >> 6;
-			current_x -= horiBearingX; // Adjust starting position
-			isFirstChar = false;
+		// Check that we really grew the string bbox
+		if (bbox.xMin > bbox.xMax) {
+			// Failed
+			bbox.xMin = bbox.yMin = 0;
+			bbox.xMax = bbox.yMax = 0;
+		} else {
+			// Transform coordinate space differences
+			bbox.yMax = y - (bbox.yMax - y) + ((ascender) >> 6);
+			bbox.yMin = y + (y - bbox.yMin) + ((ascender) >> 6);
+			if (bbox.yMax < bbox.yMin) {
+				std::swap(bbox.yMax, bbox.yMin);
+			}
+			// Correct slight misalignment of X-axis
+			offset.x = bbox.xMin - current_line_position.x;
 		}
 
-
-		// Position glyph bbox relative to current position
-		glyph_bbox.xMin += current_x;
-		glyph_bbox.xMax += current_x;
-
-		// Merge with line bbox
-		line_bbox.xMin = std::min(line_bbox.xMin, glyph_bbox.xMin);
-		line_bbox.xMax = std::max(line_bbox.xMax, glyph_bbox.xMax);
-
-
-
-		// Update current_x based on glyph advance
-		current_x += (aglyph->advance.x >> 16);
-	}
-
-	// Add the last line width if there's no trailing newline
-	if (line_bbox.xMin <= line_bbox.xMax) {
-		int32_t lineWidth = line_bbox.xMax - line_bbox.xMin;
-		lineWidths.push_back(lineWidth);
-		if (lineWidth > maxLineWidth) {
-			abbox.xMin = line_bbox.xMin;
-			abbox.xMax = line_bbox.xMax;
-		}
-
-	}
-    
-	// Calculate position based on alignment
-	int32_t baseline_y = y;
-	int32_t total_height = (num_lines - 1) * (ascender - descender) * _text.line_space_ratio + (ascender - descender);
-
-	//Get Vertical start position
-	switch (align) {
+		// Calculate alignment offset
+		switch (align) {
 		case Align::Left:
-		case Align::Center:
-		case Align::Right:
+			// Fallthrough
 		case Align::TopLeft:
-		case Align::TopCenter:
-		case Align::TopRight:
-			baseline_y += ascender;
+			// Nothing to do
+			offset.x -= bearing_left.x;
 			break;
 		case Align::MiddleLeft:
-		case Align::MiddleCenter:
-		case Align::MiddleRight:
-				baseline_y += (ascender - (total_height) / 2);
+			offset.x -= bearing_left.x;
+			offset.y += ((bbox.yMax - bbox.yMin) / 2);
 			break;
 		case Align::BottomLeft:
-		case Align::BottomCenter:
-		case Align::BottomRight:
-			baseline_y += ((ascender - (total_height)) );
+			offset.x -= bearing_left.x;
+			offset.y += (bbox.yMax - bbox.yMin);
 			break;
-	}
-
-	abbox.yMin = std::min(abbox.yMin, baseline_y - ascender);
-	std::vector<std::pair<int32_t, int32_t>> linePositions; // To store starting positions for each line
-
-	// calculate x postion for each line.
-	for (int32_t lineWidth : lineWidths) {
-	    int32_t startX = x; // Default starting position
-
-		switch (align) {
 		case Align::Center:
-        case Align::TopCenter:
-        case Align::MiddleCenter:
-        case Align::BottomCenter:
-            startX -= (lineWidth / 2);
-            break;
+			// Fallthrough
+		case Align::TopCenter:
+			offset.x += ((bbox.xMax - bbox.xMin) / 2);
+			offset.x -= bearing_left.x;
+			current_line_position.x -= (bearing_left.x / 2);
+			break;
+		case Align::MiddleCenter:
+			offset.x += ((bbox.xMax - bbox.xMin) / 2);
+			offset.x -= bearing_left.x;
+			current_line_position.x -= (bearing_left.x / 2);
+
+			offset.y += ((bbox.yMax - bbox.yMin) / 2);
+			break;
+		case Align::BottomCenter:
+			offset.x += ((bbox.xMax - bbox.xMin) / 2);
+			offset.x -= bearing_left.x;
+			current_line_position.x -= (bearing_left.x / 2);
+
+			offset.y += (bbox.yMax - bbox.yMin);
+			break;
 		case Align::Right:
-        case Align::TopRight:
-        case Align::MiddleRight:
-        case Align::BottomRight:
-            startX -= lineWidth;
-            break;
-        default:
-            break;
-    }
-		linePositions.push_back({startX, baseline_y});
-	}
+			// Fallthrough
+		case Align::TopRight:
+			offset.x += (bbox.xMax - bbox.xMin);
+			offset.x -= bearing_left.x;
+			current_line_position.x -= bearing_left.x;
+			break;
+		case Align::MiddleRight:
+			offset.x += (bbox.xMax - bbox.xMin);
+			offset.x -= bearing_left.x;
+			current_line_position.x -= bearing_left.x;
 
-	for (size_t lineIndex = 0; lineIndex < linePositions.size(); ++lineIndex) {
-		int32_t currentX = linePositions[lineIndex].first;
-		bool isFirstCharInLine = true;
-		for (uint16_t unicode : unicode_chars) {
-			if (unicode == '\n') {
-				// Move to the next line
-				lineIndex++;
-				if (lineIndex < linePositions.size()) {
-					currentX = linePositions[lineIndex].first;
+			offset.y += ((bbox.yMax - bbox.yMin) / 2);
+			break;
+		case Align::BottomRight:
+			offset.x += (bbox.xMax - bbox.xMin);
+			offset.x -= bearing_left.x;
+			current_line_position.x -= bearing_left.x;
+
+			offset.y += (bbox.yMax - bbox.yMin);
+			break;
+		default:
+			break;
+		}
+
+		bbox.xMin -= offset.x;
+		bbox.xMax -= offset.x;
+		bbox.yMin -= offset.y;
+		bbox.yMax -= offset.y;
+
+		if (_text.bg_fill_method == BgFillMethod::Block) {
+			// Clear the area to be rendering if fill method is Block
+			if (_flags.enable_optimized_drawing) {
+				// We can use fastHLine method
+				for (int _y = bbox.yMin; _y <= bbox.yMax; _y++) {
+					_drawFastHLine(bbox.xMin, _y, bbox.xMax - bbox.xMin, bg);
 				}
-				baseline_y +=  (ascender - descender) * _text.line_space_ratio;
-				isFirstCharInLine = true;
-				continue;
+			} else {
+				for (int _y = bbox.yMin; _y <= bbox.yMax; _y++) {
+					for (int _x = bbox.xMin; _x <= bbox.xMax; _x++) {
+						_drawPixel(_x, _y, bg);
+					}
+				}
 			}
-			if(drawing == Drawing::Execute) {
-				// Load and process glyph
-				image_type.flags = FT_LOAD_RENDER;
-				FT_UInt glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache,
-															&_face_id,
-														cmap_index,
-														unicode);
+		}
 
-				// Load glyph
+		// Restore coordinates
+		x = current_line_position.x;
+		y = current_line_position.y;
+
+		if (drawing == Drawing::Execute) {
+			image_type.flags              = FT_LOAD_RENDER;
+			_saved_state.drawn_bg_point.x = (x - offset.x);
+			uint16_t rendering_unicode;
+
+			while (rendering_unicode_q.size() != 0) {
+				rendering_unicode = rendering_unicode_q.front();
+
+				FT_UInt glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache,
+				                                           &_face_id,
+				                                           cmap_index,
+				                                           rendering_unicode);
 				FT_Glyph aglyph;
 #ifdef FREERTOS_CONFIG_H
 				if (g_UseRenderTask) {
@@ -707,12 +728,12 @@ uint16_t OpenFontRender::drawHString(
 						const uint8_t RUNNING_CORE = 1;
 						const uint8_t PRIORITY     = 1;
 						xTaskCreateUniversal(RenderTask,
-												"RenderTask",
-												g_RenderTaskStackSize, // Seems to need a lot of memory.
-												NULL,
-												PRIORITY,
-												&g_RenderTaskHandle,
-												RUNNING_CORE);
+						                     "RenderTask",
+						                     g_RenderTaskStackSize, // Seems to need a lot of memory.
+						                     NULL,
+						                     PRIORITY,
+						                     &g_RenderTaskHandle,
+						                     RUNNING_CORE);
 					}
 					while (g_RenderTaskStatus != IDLE) {
 						vTaskDelay(1);
@@ -737,42 +758,61 @@ uint16_t OpenFontRender::drawHString(
 #else
 				error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
 #endif
-
-				if (error){
+				if (error) {
 					debugPrintf((_debug_level & OFR_ERROR), "FTC_ImageCache_Lookup error: 0x%02X\n", error);
-				return chars_written;
+					return written_char_num;
 				}
+				FT_Vector pos = {(x - offset.x), (y - offset.y)};
+				// Change baseline to left top
+				pos.y += ((ascender) >> 6);
 
-				
-				if (aglyph->format != FT_GLYPH_FORMAT_BITMAP) {
-					error = FT_Glyph_To_Bitmap(&aglyph, FT_RENDER_MODE_NORMAL, nullptr, true);
-					if (error) { return chars_written; }
+				{
+					FT_BitmapGlyph bit = (FT_BitmapGlyph)aglyph;
+
+					draw2screen(bit, pos.x, pos.y, fg, bg);
+
+					if (_saved_state.drawn_bg_point.x < (pos.x + (uint32_t)bit->bitmap.width)) {
+						_saved_state.drawn_bg_point.x = pos.x + (uint32_t)bit->bitmap.width;
+					}
+
+					written_char_num++;
 				}
+				x += (aglyph->advance.x >> 16);
 
-				// Adjust for horizontal bearing if it's the first character in the line
-				if (isFirstCharInLine) {
-					FT_Face aface;
-					FTC_Manager_LookupFace(_ftc_manager, &_face_id, &aface);
-					int32_t horiBearingX = aface->glyph->metrics.horiBearingX >> 6;
-					currentX -= horiBearingX; // Adjust starting position
-					isFirstCharInLine = false;
-				}
-				
-				// Draw at baseline position
-				
-				FT_BitmapGlyph bit = (FT_BitmapGlyph)aglyph;
-				draw2screen(bit, currentX, baseline_y, _text.fg_color, _text.bg_color);
-
-				currentX += (aglyph->advance.x >> 16);
-				chars_written++;			
+				rendering_unicode_q.pop();
 			}
-		
 		}
-		abbox.yMax = std::max(abbox.yMax, baseline_y + descender);
-	}
-    return chars_written;
-}
 
+		if (detect_control_char) {
+			switch (unicode) {
+			case '\r':
+				x = initial_position.x;
+				break;
+			case '\n':
+				x = initial_position.x;
+				y += (int32_t)(getFontMaxHeight() * _text.line_space_ratio);
+				break;
+			default:
+				// No supported control char
+				break;
+			}
+		}
+
+		// Merge bbox
+		abbox.xMin = std::min(bbox.xMin, abbox.xMin);
+		abbox.yMin = std::min(bbox.yMin, abbox.yMin);
+		abbox.xMax = std::max(bbox.xMax, abbox.xMax);
+		abbox.yMax = std::max(bbox.yMax, abbox.yMax);
+	} // End of rendering loop
+
+	if (detect_control_char && unicode == '\n') {
+		// If string end with '\n' control char, expand bbox
+		abbox.yMax += (int32_t)(getFontMaxHeight() * _text.line_space_ratio);
+	}
+
+	_text.cursor = {x, y};
+	return written_char_num;
+}
 
 /*!
  * @brief Render single character.
