@@ -231,6 +231,8 @@ We would be happy to receive reports on hardware not listed here.
   - M5Stack (Board Manager v2.0.4)
     - M5Stack Basic (Library v0.1.4)
     - M5Stack Core2 (Library v0.4.0)
+  - STM32
+    - STM32H750 (by wystewart #34)
 - PlatformIO
   - M5Stack Basic (Library v2.0.4)
   - M5Stack Core2 (Library v2.0.4)

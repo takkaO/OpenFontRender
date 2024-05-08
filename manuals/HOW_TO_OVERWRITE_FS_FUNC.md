@@ -1,5 +1,5 @@
 
-# How to load font files from file system {#tests_testa}
+# How to load font files from file system {#how_to_load_font_files_from_file_system}
 
 Control of file systems such as SD/TF cards and SPIFFS is strongly hardware-dependent.  
 OpenFontRender supports the following reads as presets.  

@@ -435,8 +435,8 @@ FT_Error OpenFontRender::loadFont(const unsigned char *data, size_t size, uint8_
  * @param[in] (target_face_index) Load font index. Default is 0.
  * @return FreeType error code. 0 is success.
  * @ingroup rendering_api
- * @note SD card access is strongly hardware dependent, so for hardware other than M5Stack and Wio Terminal,
- * @note you will need to add file manipulation functions to FileSupport.cpp/.h.
+ * @note SD card access is strongly hardware dependent, so you will need to include preset in `ofrfs` or
+ * @note implement custom file I/O code (see Manuals).
  * @note Any better solutions are welcome.
  */
 FT_Error OpenFontRender::loadFont(const char *fpath, uint8_t target_face_index) {
