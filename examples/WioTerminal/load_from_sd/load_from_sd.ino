@@ -1,5 +1,6 @@
 #include "TFT_eSPI.h"
 #include "OpenFontRender.h"
+#include "ofrfs/WioTerminal_SD_Preset.h" // Use preset
 
 TFT_eSPI tft;
 OpenFontRender render;

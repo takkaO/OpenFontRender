@@ -56,3 +56,4 @@
 - [PowerShell 文字列を結合するサンプル | ITSakura](https://itsakura.com/powershell-string#s3)
 - [【PowerShell】文字列に改行を含める - Muni Bus](https://munibus.hatenablog.com/entry/2020/08/04/235440)
 - [docker-compose で複数環境を構築するときの設定をなるべく DRY に書く - ikasama over technology](https://ikasamak503.hatenablog.com/entry/dry-docker-compose-yaml)
+- [Visual C++ でのweak symbol - 見切り発車](https://uyamae.hatenablog.com/entry/2020/12/19/215015)

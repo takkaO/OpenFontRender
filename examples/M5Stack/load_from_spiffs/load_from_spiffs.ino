@@ -1,9 +1,10 @@
 #include <Arduino.h>
 #include <M5Unified.h>
 #include <SD.h>
+#include <SPIFFS.h>
 
-#include "OpenFontRender.h"			 // Include after M5Unified.h
-#include "ofrfs/M5Stack_SD_Preset.h" // Use preset
+#include "OpenFontRender.h"				 // Include after M5Unified.h
+#include "ofrfs/M5Stack_SPIFFS_Preset.h" // Use preset
 
 OpenFontRender render;
 
@@ -14,7 +15,7 @@ void setup()
 	M5.begin(cfg);
 	M5.Display.fillScreen(TFT_BLACK);
 
-	SD.begin(GPIO_NUM_4, SPI, 40000000);
+	SPIFFS.begin();
 
 	render.setSerial(Serial);	  // Need to print render library message
 	render.showFreeTypeVersion(); // print FreeType version

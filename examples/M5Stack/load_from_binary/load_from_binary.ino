@@ -1,18 +1,17 @@
-#if defined(ARDUINO_M5Stack_Core_ESP32) || defined(ARDUINO_M5STACK_FIRE)
-#include "M5Stack.h"
-#elif defined(ARDUINO_M5STACK_Core2) // M5Stack Core2
-#include "M5Core2.h"
-#endif
+#include <Arduino.h>
+#include <M5Unified.h>
+
 #include "binaryttf.h"
-#include "OpenFontRender.h" // Include after M5Stack.h / M5Core2.h
+#include "OpenFontRender.h" // Include after M5Unified.h
 
 OpenFontRender render;
 
 void setup()
 {
 	// put your setup code here, to run once:
-	M5.begin();
-	M5.Lcd.fillScreen(TFT_BLACK);
+	auto cfg = M5.config();
+	M5.begin(cfg);
+	M5.Display.fillScreen(TFT_BLACK);
 
 	render.setSerial(Serial);	  // Need to print render library message
 	render.showFreeTypeVersion(); // print FreeType version
@@ -24,12 +23,12 @@ void setup()
 		return;
 	}
 
-	render.setDrawer(M5.Lcd); // Set drawer object
+	render.setDrawer(M5.Display); // Set drawer object
 	/* You can also be written as follows. */
-	// render.setDrawPixel(M5.Lcd.drawPixel);
-	// render.setDrawFastHLine(M5.Lcd.drawFastHLine); // optional
-	// render.setStartWrite(M5.Lcd.startWrite);       // optional
-	// render.setEndWrite(M5.Lcd.endWrite);           // optional
+	// render.setDrawPixel(M5.Display.drawPixel);
+	// render.setDrawFastHLine(M5.Display.drawFastHLine); // optional
+	// render.setStartWrite(M5.Display.startWrite);       // optional
+	// render.setEndWrite(M5.Display.endWrite);           // optional
 
 	// render.setBackgroundFillMethod(BgFillMethod::None);	// default
 	// render.setBackgroundFillMethod(BgFillMethod::Minimum);

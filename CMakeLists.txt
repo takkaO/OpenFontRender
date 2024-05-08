@@ -80,6 +80,7 @@ idf_component_register(SRCS ${srcs}
                        "./src/base"
                        "./src/cache"
                        "./src/freetype"
+                       "./src/ofrfs"
                        "./src/sfnt"
                        "./src/smooth"
                        "./src/truetype"

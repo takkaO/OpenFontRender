@@ -10,61 +10,126 @@
 
 #include "FileSupport.h"
 
-#if defined(ARDUINO_WIO_TERMINAL) || defined(ARDUINO_M5_SERIES)
+#if defined(_MSC_VER) // Support for VisualStudio
 
-std::list<fileclass_t> f_list;
-fs::FS &fontFS = SD;
-
-void ffsupport_setffs(fs::FS &ffs) {
-	fontFS = ffs;
+/*!
+ * @brief Close file.
+ * @param[in] (*stream) File pointer.
+ * @note The weak symbol is defined.
+ * @note Need to override this function delay on the device used.
+ */
+void _default_OFR_fclose(FT_FILE *stream) {
 }
 
-fileclass_t *ffsupport_fopen(const char *Filename, const char *mode) {
-	fileclass_t fileclass;
-	#if defined(ARDUINO_WIO_TERMINAL)
-	// For WioTerminal
-	if (strcmp(mode, "r") == 0) {
-		fileclass._fstream = fontFS.open(Filename, FA_READ);
-	} else if (strcmp(mode, "r+") == 0) {
-		fileclass._fstream = fontFS.open(Filename, FA_READ | FA_WRITE);
-	} else if (strcmp(mode, "w") == 0) {
-		fileclass._fstream = fontFS.open(Filename, FA_CREATE_ALWAYS | FA_WRITE);
-	} else if (strcmp(mode, "w+") == 0) {
-		fileclass._fstream = fontFS.open(Filename, FA_CREATE_ALWAYS | FA_WRITE | FA_READ);
-	} else if (strcmp(mode, "a") == 0) {
-		fileclass._fstream = fontFS.open(Filename, FA_OPEN_APPEND | FA_WRITE);
-	} else if (strcmp(mode, "a+") == 0) {
-		fileclass._fstream = fontFS.open(Filename, FA_OPEN_APPEND | FA_WRITE | FA_READ);
-	} else if (strcmp(mode, "wx") == 0) {
-		fileclass._fstream = fontFS.open(Filename, FA_CREATE_NEW | FA_WRITE);
-	} else if (strcmp(mode, "w+x") == 0) {
-		fileclass._fstream = fontFS.open(Filename, FA_CREATE_NEW | FA_WRITE | FA_READ);
-	} else {
-		fileclass._fstream = fontFS.open(Filename, FA_READ);
-	}
-	#else
-	// For M5Stack and others
-	fileclass._fstream = fontFS.open(Filename, mode);
-	#endif
-
-	f_list.push_back(fileclass);
-	return &f_list.back();
+/*!
+ * @brief Open file and get file pointer.
+ * @param[in] (*filename) Target file path.
+ * @param[in] (*mode) Open mode.
+ * @return File pointer or false (NULL).
+ * @note The weak symbol is defined.
+ * @note Need to override this function delay on the device used.
+ */
+FT_FILE *_default_OFR_fopen(const char *filename, const char *mode) {
+	return NULL;
 }
 
-void ffsupport_fclose(fileclass_t *stream) {
-	stream->_fstream.close();
+/*!
+ * @brief Read data from a file and store it in a buffer.
+ * @param[in] (*ptr) Buffer pointer.
+ * @param[in] (size) Data size.
+ * @param[in] (nmemb) Number of read data.
+ * @param[in] (*stream) File pointer.
+ * @return Number of successfully read data.
+ * @note The weak symbol is defined.
+ * @note Need to override this function delay on the device used.
+ */
+size_t _default_OFR_fread(void *ptr, size_t size, size_t nmemb, FT_FILE *stream) {
+	return 0;
 }
 
-size_t ffsupport_fread(void *ptr, size_t size, size_t nmemb, fileclass_t *stream) {
-	return stream->_fstream.read((uint8_t *)ptr, size * nmemb);
+/*!
+ * @brief Moves the cursor to the specified position.
+ * @param[in] (*stream) File pointer.
+ * @param[in] (offset) Move offset.
+ * @param[in] (whence) Seek position.
+ * @return If successful, return 0, otherwise return non-zero.
+ * @note The weak symbol is defined.
+ * @note Need to override this function delay on the device used.
+ */
+int _default_OFR_fseek(FT_FILE *stream, long int offset, int whence) {
+	return -1;
 }
 
-int ffsupport_fseek(fileclass_t *stream, long int offset, int whence) {
-	return stream->_fstream.seek(offset, (SeekMode)whence);
+/*!
+ * @brief Get file cursor position.
+ * @param[in] (*stream) File pointer.
+ * @return If successful, return position, otherwise return -1L.
+ * @note The weak symbol is defined.
+ * @note Need to override this function delay on the device used.
+ */
+long int _default_OFR_ftell(FT_FILE *stream) {
+	return -1L;
 }
 
-long int ffsupport_ftell(fileclass_t *stream) {
-	return stream->_fstream.position();
+#else
+
+/*!
+ * @brief Close file.
+ * @param[in] (*stream) File pointer.
+ * @note The weak symbol is defined.
+ * @note Need to override this function delay on the device used.
+ */
+__attribute__((weak)) void OFR_fclose(FT_FILE *stream) {
+}
+
+/*!
+ * @brief Open file and get file pointer.
+ * @param[in] (*filename) Target file path.
+ * @param[in] (*mode) Open mode.
+ * @return File pointer or false (NULL).
+ * @note The weak symbol is defined.
+ * @note Need to override this function delay on the device used.
+ */
+__attribute__((weak)) FT_FILE *OFR_fopen(const char *filename, const char *mode) {
+	return NULL;
+}
+
+/*!
+ * @brief Read data from a file and store it in a buffer.
+ * @param[in] (*ptr) Buffer pointer.
+ * @param[in] (size) Data size.
+ * @param[in] (nmemb) Number of read data.
+ * @param[in] (*stream) File pointer.
+ * @return Number of successfully read data.
+ * @note The weak symbol is defined.
+ * @note Need to override this function delay on the device used.
+ */
+__attribute__((weak)) size_t OFR_fread(void *ptr, size_t size, size_t nmemb, FT_FILE *stream) {
+	return 0;
+}
+
+/*!
+ * @brief Moves the cursor to the specified position.
+ * @param[in] (*stream) File pointer.
+ * @param[in] (offset) Move offset.
+ * @param[in] (whence) Seek position.
+ * @return If successful, return 0, otherwise return non-zero.
+ * @note The weak symbol is defined.
+ * @note Need to override this function delay on the device used.
+ */
+__attribute__((weak)) int OFR_fseek(FT_FILE *stream, long int offset, int whence) {
+	return -1;
+}
+
+/*!
+ * @brief Get file cursor position.
+ * @param[in] (*stream) File pointer.
+ * @return If successful, return position, otherwise return -1L.
+ * @note The weak symbol is defined.
+ * @note Need to override this function delay on the device used.
+ */
+__attribute__((weak)) long int OFR_ftell(FT_FILE *stream) {
+	return -1L;
 }
 
 #endif

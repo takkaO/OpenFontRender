@@ -5,7 +5,7 @@
 # 
 # Copyright (c) 2021 takkaO
 #
-# If you use, modify, or redistribute this file independently　
+# If you use, modify, or redistribute this file independently 
 # of the original repository, this program is licensed under 
 # the MIT License.
 # 

@@ -24,7 +24,7 @@ Clone this repository into Arduino library folder.
 
 See **[GitHub Pages](https://takkao.github.io/OpenFontRender/)** for a list of available APIs.
 Bellow is only a part of the sample code.  
-More detailed examples can be found in [examples]([/examples/](https://github.com/takkaO/OpenFontRender/tree/master/examples)).
+More detailed examples can be found in [examples](https://github.com/takkaO/OpenFontRender/tree/master/examples).
 
 #### Load from array (Wio Terminal)
 
@@ -93,21 +93,23 @@ void loop()
 #### Load from SD card (M5Stack)
 
 ```cpp
-#if defined(ARDUINO_M5Stack_Core_ESP32) || defined(ARDUINO_M5STACK_FIRE)
-#include "M5Stack.h"
-#elif defined(ARDUINO_M5STACK_Core2) // M5Stack Core2
-#include "M5Core2.h"
-#endif
+#include <Arduino.h>
+#include <M5Unified.h>
+#include <SD.h>
 
-#include "OpenFontRender.h" // Include after M5Stack.h / M5Core2.h
+#include "OpenFontRender.h"			 // Include after M5Unified.h
+#include "ofrfs/M5Stack_SD_Preset.h" // Use preset
 
 OpenFontRender render;
 
 void setup()
 {
 	// put your setup code here, to run once:
-	M5.begin();
-	M5.Lcd.fillScreen(TFT_BLACK);
+	auto cfg = M5.config();
+	M5.begin(cfg);
+	M5.Display.fillScreen(TFT_BLACK);
+
+	SD.begin(GPIO_NUM_4, SPI, 40000000);
 
 	render.setSerial(Serial);	  // Need to print render library message
 	render.showFreeTypeVersion(); // print FreeType version
@@ -119,12 +121,12 @@ void setup()
 		return;
 	}
 
-	render.setDrawer(M5.Lcd); // Set drawer object
+	render.setDrawer(M5.Display); // Set drawer object
 	/* You can also be written as follows. */
-	// render.setDrawPixel(M5.Lcd.drawPixel);
-	// render.setDrawFastHLine(M5.Lcd.drawFastHLine); // optional
-	// render.setStartWrite(M5.Lcd.startWrite);       // optional
-	// render.setEndWrite(M5.Lcd.endWrite);           // optional
+	// render.setDrawPixel(M5.Display.drawPixel);
+	// render.setDrawFastHLine(M5.Display.drawFastHLine); // optional
+	// render.setStartWrite(M5.Display.startWrite);       // optional
+	// render.setEndWrite(M5.Display.endWrite);           // optional
 
 	unsigned long t_start = millis();
 
@@ -149,6 +151,7 @@ void loop()
 {
 	// put your main code here, to run repeatedly:
 }
+
 ```
 
 ### How to create binary TTF file
@@ -177,6 +180,9 @@ render.setEndWrite(my_end_write_function);     // optional
 
 If you have an object for drawing and it contains the necessary methods, you can also use `setDrawer` method instead.
 
+```cpp
+render.setDrawer(my_draw_object);	// Set drawer object
+```
 
 ### Switch other FreeType version
 
@@ -194,6 +200,23 @@ Default version is 2.4.12 because it was the version that worked most stably.
 
 If you are using FreeRTOS, some versions may become unstable.  
 You may have to increase the stack size or enable `useRenderTask` to get it to work.
+
+### How to load font files from SD/TF cards, SPIFFS, and so on
+
+Control of file systems such as SD/TF cards and SPIFFS is strongly hardware-dependent.
+OpenFontRender supports the following reads as presets.
+
+- M5Stack
+  - SD/TF (`ofrfs/M5Stack_SD_Preset.h`)
+  - SPIFFS (`ofrfs/M5Stack_SPIFFS_Preset.h`)
+- Wio Terminal
+  - SD/TF (`ofrfs/WioTerminal_SD_Preset.h`)
+
+If you want to load font file from unsupported file system, 
+you will need to overwrite some functions on the user code.
+
+See the documentation for details on how to overwrite them.
+If you created a new preset, it would be great if you could provide us with the code.
 
 ### Test
 

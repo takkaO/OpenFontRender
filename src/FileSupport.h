@@ -11,57 +11,45 @@
 #ifndef FILE_SUPPORT_H
 #define FILE_SUPPORT_H
 
-#include <list>
+#include <cstddef>
 
-#if defined(ARDUINO_BOARD)
-	#if defined(ARDUINO_M5Stack_Core_ESP32) || defined(ARDUINO_M5STACK_FIRE)
-		#define ARDUINO_M5_SERIES
-	#elif defined(ARDUINO_M5STACK_CORE2) || defined(ARDUINO_M5STACK_Tough)
-		#define ARDUINO_M5_SERIES
-	#elif defined(ARDUINO_M5Stick_C) || defined(ARDUINO_M5Stick_C_PLUS)
-		#define ARDUINO_M5_SERIES
-	#endif
-#endif
+#define FT_FILE void
+#define ft_fclose OFR_fclose
+#define ft_fopen OFR_fopen
+#define ft_fread OFR_fread
+#define ft_fseek OFR_fseek
+#define ft_ftell OFR_ftell
 
-#if defined(ARDUINO_M5_SERIES)
-	#include <SD.h>
-	#include <SPIFFS.h>
-#endif
+#if defined(_MSC_VER) // Support for VisualStudio
 
-#if defined(ARDUINO_WIO_TERMINAL)
-	#include <SPI.h>
-	#include <Seeed_Arduino_FS.h>
-#endif
+extern "C" {
+	void OFR_fclose(FT_FILE *stream);
+	FT_FILE *OFR_fopen(const char *filename, const char *mode);
+	size_t OFR_fread(void *ptr, size_t size, size_t nmemb, FT_FILE *stream);
+	int OFR_fseek(FT_FILE *stream, long int offset, int whence);
+	long int OFR_ftell(FT_FILE *stream);
 
-#if defined(ARDUINO_WIO_TERMINAL) || defined(ARDUINO_M5_SERIES)
+	void _default_OFR_fclose(FT_FILE *stream);
+	FT_FILE *_default_OFR_fopen(const char *filename, const char *mode);
+	size_t _default_OFR_fread(void *ptr, size_t size, size_t nmemb, FT_FILE *stream);
+	int _default_OFR_fseek(FT_FILE *stream, long int offset, int whence);
+	long int _default_OFR_ftell(FT_FILE *stream);
+}
 
-	// TODO: want to make the program more abstract and common.
-
-	#define FT_FILE fileclass_t
-	#define ft_fclose ffsupport_fclose
-	#define ft_fopen ffsupport_fopen
-	#define ft_fread ffsupport_fread
-	#define ft_fseek ffsupport_fseek
-	#define ft_ftell ffsupport_ftell
-
-typedef struct {
-	File _fstream;
-} fileclass_t;
-
-void ffsupport_setffs(fs::FS &ffs);
-fileclass_t *ffsupport_fopen(const char *Filename, const char *mode);
-void ffsupport_fclose(fileclass_t *stream);
-size_t ffsupport_fread(void *ptr, size_t size, size_t nmemb, fileclass_t *stream);
-int ffsupport_fseek(fileclass_t *stream, long int offset, int whence);
-long int ffsupport_ftell(fileclass_t *stream);
+	#pragma comment(linker, "/alternatename:OFR_fclose=_default_OFR_fclose")
+	#pragma comment(linker, "/alternatename:OFR_fopen=_default_OFR_fopen")
+	#pragma comment(linker, "/alternatename:OFR_fread=_default_OFR_fread")
+	#pragma comment(linker, "/alternatename:OFR_fseek=_default_OFR_fseek")
+	#pragma comment(linker, "/alternatename:OFR_ftell=_default_OFR_ftell")
 
 #else
-	#define FT_FILE FILE
-	#define ft_fclose fclose
-	#define ft_fopen fopen
-	#define ft_fread fread
-	#define ft_fseek fseek
-	#define ft_ftell ftell
+
+void OFR_fclose(FT_FILE *stream);
+FT_FILE *OFR_fopen(const char *filename, const char *mode);
+size_t OFR_fread(void *ptr, size_t size, size_t nmemb, FT_FILE *stream);
+int OFR_fseek(FT_FILE *stream, long int offset, int whence);
+long int OFR_ftell(FT_FILE *stream);
+
 #endif
 
 #ifdef CONFIG_SPIRAM_SUPPORT
