@@ -38,16 +38,19 @@ var NAVTREE =
         [ "How to switch", "index.html#autotoc_md9", null ],
         [ "Note", "index.html#autotoc_md10", null ]
       ] ],
-      [ "Test", "index.html#autotoc_md11", [
-        [ "Tested Hardware", "index.html#autotoc_md12", null ],
-        [ "Rendering speed", "index.html#autotoc_md13", null ]
+      [ "How to load font files from SD/TF cards, SPIFFS, and so on", "index.html#autotoc_md11", null ],
+      [ "Test", "index.html#autotoc_md12", [
+        [ "Tested Hardware", "index.html#autotoc_md13", null ],
+        [ "Rendering speed", "index.html#autotoc_md14", null ]
       ] ],
-      [ "LICENSE", "index.html#autotoc_md14", [
-        [ "Sample font", "index.html#autotoc_md15", null ],
-        [ "FreeType", "md__r_e_f_e_r_e_n_c_e__s_i_t_e_s.html#autotoc_md18", null ],
-        [ "Other", "md__r_e_f_e_r_e_n_c_e__s_i_t_e_s.html#autotoc_md19", null ]
+      [ "LICENSE", "index.html#autotoc_md15", [
+        [ "Sample font", "index.html#autotoc_md16", null ],
+        [ "FreeType", "md__r_e_f_e_r_e_n_c_e__s_i_t_e_s.html#autotoc_md19", null ],
+        [ "GitHub Actions", "md__r_e_f_e_r_e_n_c_e__s_i_t_e_s.html#autotoc_md20", null ],
+        [ "Other", "md__r_e_f_e_r_e_n_c_e__s_i_t_e_s.html#autotoc_md21", null ]
       ] ]
     ] ],
+    [ "Manuals", "md_manuals_pages.html", "md_manuals_pages" ],
     [ "Deprecated List", "deprecated.html", null ],
     [ "Modules", "modules.html", "modules" ],
     [ "Classes", "annotated.html", [
@@ -63,6 +66,8 @@ var NAVTREE =
       [ "File List", "files.html", "files_dup" ],
       [ "File Members", "globals.html", [
         [ "All", "globals.html", null ],
+        [ "Functions", "globals_func.html", null ],
+        [ "Variables", "globals_vars.html", null ],
         [ "Enumerations", "globals_enum.html", null ],
         [ "Enumerator", "globals_eval.html", null ],
         [ "Macros", "globals_defs.html", null ]

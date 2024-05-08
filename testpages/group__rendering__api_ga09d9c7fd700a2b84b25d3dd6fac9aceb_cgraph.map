@@ -1,6 +1,6 @@
 <map id="OpenFontRender::calculateFitFontSize" name="OpenFontRender::calculateFitFontSize">
-<area shape="rect" id="node1" title="Calculates the maximum font size that will fit the specified string and the specified rectangle." alt="" coords="5,47,184,87"/>
-<area shape="rect" id="node2" href="$group__rendering__api.html#gabbf28be9dfb94a87e6e43c69053189aa" title="Renders text horizontally." alt="" coords="232,5,431,31"/>
-<area shape="rect" id="node3" href="$group__font__api.html#ga06d306cc98080edb6f516e3676bb685e" title="Get the current font size." alt="" coords="234,55,429,80"/>
-<area shape="rect" id="node4" href="$group__font__api.html#gace21b908833d87b87624bd11cebcbbc6" title="Set the font size for rendering." alt="" coords="234,104,429,129"/>
+<area shape="rect" id="node1" title="Calculates the maximum font size that will fit the specified string and the specified rectangle." alt="" coords="5,47,183,88"/>
+<area shape="rect" id="node2" href="$group__rendering__api.html#gabbf28be9dfb94a87e6e43c69053189aa" title="Renders text horizontally." alt="" coords="231,5,428,31"/>
+<area shape="rect" id="node3" href="$group__font__api.html#ga06d306cc98080edb6f516e3676bb685e" title="Get the current font size." alt="" coords="232,55,427,80"/>
+<area shape="rect" id="node4" href="$group__font__api.html#gace21b908833d87b87624bd11cebcbbc6" title="Set the font size for rendering." alt="" coords="232,104,427,130"/>
 </map>

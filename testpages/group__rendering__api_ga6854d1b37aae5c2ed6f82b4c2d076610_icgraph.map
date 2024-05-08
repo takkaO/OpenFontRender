@@ -1,6 +1,6 @@
 <map id="OpenFontRender::calculateBoundingBox" name="OpenFontRender::calculateBoundingBox">
-<area shape="rect" id="node1" title="Calculate text bounding box." alt="" coords="260,63,439,103"/>
-<area shape="rect" id="node2" href="$group__rendering__api.html#gab6e2c32307cb6cb38ce8df7803cc6360" title="Calculate text bounding box with format specifier." alt="" coords="19,5,198,45"/>
-<area shape="rect" id="node3" href="$group__rendering__api.html#gaff81ffa2a57039164533bfb802880a75" title="Calculate text height." alt="" coords="5,70,212,95"/>
-<area shape="rect" id="node4" href="$group__rendering__api.html#gaaf50302a79aa0180c36b4c7b7c90266f" title="Calculate text width." alt="" coords="7,119,210,145"/>
+<area shape="rect" id="node1" title="Calculate text bounding box." alt="" coords="260,63,437,103"/>
+<area shape="rect" id="node2" href="$group__rendering__api.html#gab6e2c32307cb6cb38ce8df7803cc6360" title="Calculate text bounding box with format specifier." alt="" coords="20,5,197,46"/>
+<area shape="rect" id="node3" href="$group__rendering__api.html#gaff81ffa2a57039164533bfb802880a75" title="Calculate text height." alt="" coords="5,70,212,96"/>
+<area shape="rect" id="node4" href="$group__rendering__api.html#gaaf50302a79aa0180c36b4c7b7c90266f" title="Calculate text width." alt="" coords="8,120,209,145"/>
 </map>
