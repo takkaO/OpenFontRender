@@ -631,11 +631,11 @@ uint16_t OpenFontRender::drawHString(const char *str,
 			break;
 		case Align::MiddleLeft:
 			offset.x -= bearing_left.x;
-			offset.y += ((bbox.yMax - bbox.yMin) / 2);
+			offset.y += ((bbox.yMax - bbox.yMin) );
 			break;
 		case Align::BottomLeft:
 			offset.x -= bearing_left.x;
-			offset.y += (bbox.yMax - bbox.yMin);
+			offset.y += ((bbox.yMax - bbox.yMin) * 2);
 			break;
 		case Align::Center:
 			// Fallthrough
@@ -649,14 +649,14 @@ uint16_t OpenFontRender::drawHString(const char *str,
 			offset.x -= bearing_left.x;
 			current_line_position.x -= (bearing_left.x / 2);
 
-			offset.y += ((bbox.yMax - bbox.yMin) / 2);
+			offset.y += ((bbox.yMax - bbox.yMin));
 			break;
 		case Align::BottomCenter:
 			offset.x += ((bbox.xMax - bbox.xMin) / 2);
 			offset.x -= bearing_left.x;
 			current_line_position.x -= (bearing_left.x / 2);
 
-			offset.y += (bbox.yMax - bbox.yMin);
+			offset.y += ((bbox.yMax - bbox.yMin) * 2);
 			break;
 		case Align::Right:
 			// Fallthrough
@@ -670,14 +670,14 @@ uint16_t OpenFontRender::drawHString(const char *str,
 			offset.x -= bearing_left.x;
 			current_line_position.x -= bearing_left.x;
 
-			offset.y += ((bbox.yMax - bbox.yMin) / 2);
+			offset.y += ((bbox.yMax - bbox.yMin) );
 			break;
 		case Align::BottomRight:
 			offset.x += (bbox.xMax - bbox.xMin);
 			offset.x -= bearing_left.x;
 			current_line_position.x -= bearing_left.x;
 
-			offset.y += (bbox.yMax - bbox.yMin);
+			offset.y += ((bbox.yMax - bbox.yMin) *2);
 			break;
 		default:
 			break;
