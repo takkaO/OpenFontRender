@@ -538,6 +538,36 @@ uint16_t OpenFontRender::drawHString(const char *str,
 		ascender   = asize->face->size->metrics.ascender;
 	}
 
+	// Before starting the rendering loop, count lines and adjust position
+	int32_t total_lines = 1;
+	const char* text_ptr = str;
+	while (*text_ptr) {
+		if (*text_ptr == '\n') {
+			total_lines++;
+		}
+		text_ptr++;
+	}
+
+	// Adjust initial y position for multiline text based on alignment
+	if (total_lines > 1) {
+		int32_t block_height = (total_lines - 1) * (int32_t)(getFontMaxHeight() * _text.line_space_ratio);
+		switch (align) {
+			case Align::MiddleLeft:
+			case Align::MiddleCenter:
+			case Align::MiddleRight:
+				y -= block_height / 2;
+				break;
+			case Align::BottomLeft:
+			case Align::BottomCenter:
+			case Align::BottomRight:
+				y -= block_height;
+				break;
+			default:
+				// Top alignment needs no adjustment
+				break;
+		}
+	}
+
 	// Rendering loop
 	while (unicode_q.size() != 0) {
 		FT_Vector offset       = {0, 0};
