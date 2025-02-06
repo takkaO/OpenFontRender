@@ -466,6 +466,203 @@ void OpenFontRender::unloadFont() {
 	g_NeedInitialize = true;
 }
 
+uint16_t OpenFontRender::drawHString(
+	const char *str,
+	int32_t x,
+	int32_t y,
+	uint16_t fg,
+	uint16_t bg,
+	Align align,
+	Drawing drawing,
+	FT_BBox &abbox,
+	FT_Error &error
+){
+	// 1. Get font metrics first
+    FT_Size asize = NULL;
+    FTC_ScalerRec scaler;
+    scaler.face_id = &_face_id;
+    scaler.width = 0;
+    scaler.height = _text.size;
+    scaler.pixel = true;
+    
+    error = FTC_Manager_LookupSize(_ftc_manager, &scaler, &asize);
+    if (error) return 0;
+
+ 	// Get charmap index once
+	FT_Int cmap_index = FT_Get_Charmap_Index(asize->face->charmap);
+
+	// Validate charmap exists
+	if (!asize->face->charmap) {
+		Serial.println("No charmap found");
+		Serial.flush();
+		return 0;
+	}
+
+	// Get metrics (convert from 26.6 fixed point)
+    int32_t ascender = asize->face->size->metrics.ascender >> 6;
+    int32_t descender = asize->face->size->metrics.descender >> 6;
+    
+    FTC_ImageTypeRec image_type;
+    image_type.face_id = scaler.face_id;
+    image_type.width = scaler.width;
+    image_type.height = scaler.height;
+    image_type.flags = FT_LOAD_DEFAULT;
+	// image_type.flags = FT_LOAD_RENDER;
+
+
+	uint16_t chars_written = 0;
+    int32_t pen_x = x;
+
+	// First decode all characters to Unicode
+	uint16_t unicode = '\0';
+	std::vector<uint16_t> unicode_chars;
+	{
+		uint16_t len = strlen(str);
+		uint16_t n = 0;
+		while (n < len) {
+			unicode = decodeUTF8((uint8_t *)str, &n, len - n);
+			if (unicode < 32) {  // Skip control chars
+				continue;
+			}
+			unicode_chars.push_back(unicode);
+		}
+	}
+
+int32_t total_width = 0;
+FT_BBox string_bbox;
+string_bbox.xMin = string_bbox.yMin = LONG_MAX;
+string_bbox.xMax = string_bbox.yMax = LONG_MIN;
+bool isFirstChar = true;
+int32_t current_x = 0;
+
+for (uint16_t unicode : unicode_chars) {
+	FT_UInt glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache,
+											&_face_id,
+											cmap_index,
+											unicode);
+
+	// Load glyph
+	FT_Glyph aglyph;
+	error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
+	if (error) continue;
+
+	// Get glyph's bounding box
+	FT_BBox glyph_bbox;
+	FT_Glyph_Get_CBox(aglyph, FT_GLYPH_BBOX_PIXELS, &glyph_bbox);
+
+	// Handle first character's bearing
+	if (isFirstChar) {
+		FT_Face aface;
+		FTC_Manager_LookupFace(_ftc_manager, &_face_id, &aface);
+		current_x = (aface->glyph->metrics.horiBearingX >> 6);
+		isFirstChar = false;
+	}
+
+	// Position glyph bbox relative to current position
+	glyph_bbox.xMin += current_x;
+	glyph_bbox.xMax += current_x;
+
+	// Merge with string bbox
+	string_bbox.xMin = std::min(string_bbox.xMin, glyph_bbox.xMin);
+	string_bbox.xMax = std::max(string_bbox.xMax, glyph_bbox.xMax);
+
+	// Move to next position
+	current_x += (aglyph->advance.x >> 16);
+}
+
+// Calculate total width from the merged bounding box
+if (string_bbox.xMin <= string_bbox.xMax) {
+	total_width = string_bbox.xMax - string_bbox.xMin;
+}
+    
+	// Calculate position based on alignment
+	int32_t baseline_y = y;
+
+	switch (align) {
+		case Align::TopLeft:
+			baseline_y += ascender;
+			break;
+		case Align::TopCenter:
+			baseline_y += ascender;
+			pen_x -= (total_width / 2);
+			break;
+		case Align::TopRight:
+			baseline_y += ascender;
+			pen_x -= total_width;
+			break;
+		case Align::MiddleLeft:
+			baseline_y += (ascender + descender) / 2;
+			break;
+		case Align::MiddleCenter:
+			baseline_y += (ascender + descender) / 2;
+			pen_x -= (total_width / 2);
+			break;
+		case Align::MiddleRight:
+			baseline_y += (ascender + descender) / 2;
+			pen_x -= total_width;
+			break;
+		case Align::BottomLeft:
+			baseline_y += descender;
+			break;
+		case Align::BottomCenter:
+			baseline_y += descender;
+			pen_x -= (total_width / 2);
+			break;
+		case Align::BottomRight:
+			baseline_y += descender;
+			pen_x -= total_width;
+			break;
+	}
+
+    for (uint16_t unicode : unicode_chars) {
+		image_type.flags = FT_LOAD_RENDER;
+		if (!_ftc_cmap_cache) {
+			Serial.println("Cache is null!");
+			Serial.flush();
+			continue;
+		}
+
+		// Handle control characters
+		if (unicode < 32) {
+			Serial.printf("Control char detected: 0x%04X\n", unicode);
+			Serial.flush();
+			continue;
+		}
+
+		FT_UInt glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache,
+													&_face_id,
+                                                  cmap_index,
+                                                  unicode);
+
+        // Load glyph
+        FT_Glyph aglyph;
+        error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
+        if (error) {
+			Serial.printf("FTC_ImageCache_Lookup error: 0x%02X\n", error);
+			Serial.flush();
+			break;
+		}
+		
+		if (aglyph->format != FT_GLYPH_FORMAT_BITMAP) {
+			FT_Error err = FT_Glyph_To_Bitmap(&aglyph, FT_RENDER_MODE_NORMAL, nullptr, true);
+			if (err) {
+				Serial.printf("Failed to convert to bitmap: %d\n", err);
+				Serial.flush();
+				continue;
+			}
+		}
+        
+        // Draw at baseline position
+        FT_BitmapGlyph bit = (FT_BitmapGlyph)aglyph;
+		draw2screen(bit, pen_x, baseline_y, _text.fg_color, _text.bg_color);
+
+        // Advance pen position
+        pen_x += (aglyph->advance.x >> 16);
+        chars_written++;
+    }
+    return chars_written;
+}
+
 /*!
  * @brief Renders text horizontally.
  * @param[in] (*str) String to draw.
@@ -482,367 +679,367 @@ void OpenFontRender::unloadFont() {
  * @note Direct calls to this function are not recommended. This is because it complicates the call.
  * @note Instead, it is recommended to use the `printf` and `drawString` functions in combination with optional methods such as `setFontColor` and `setAlignment` function.
  */
-uint16_t OpenFontRender::drawHString(const char *str,
-                                     int32_t x,
-                                     int32_t y,
-                                     uint16_t fg,
-                                     uint16_t bg,
-                                     Align align,
-                                     Drawing drawing,
-                                     FT_BBox &abbox,
-                                     FT_Error &error) {
+// uint16_t OpenFontRender::drawHString(const char *str,
+//                                      int32_t x,
+//                                      int32_t y,
+//                                      uint16_t fg,
+//                                      uint16_t bg,
+//                                      Align align,
+//                                      Drawing drawing,
+//                                      FT_BBox &abbox,
+//                                      FT_Error &error) {
 
-	uint16_t written_char_num    = 0;
-	Cursor initial_position      = {x, y};
-	Cursor current_line_position = {x, y};
-	FT_Pos ascender              = 0;
-	bool detect_control_char     = false;
+// 	uint16_t written_char_num    = 0;
+// 	Cursor initial_position      = {x, y};
+// 	Cursor current_line_position = {x, y};
+// 	FT_Pos ascender              = 0;
+// 	bool detect_control_char     = false;
 
-	abbox.xMin = abbox.yMin = LONG_MAX;
-	abbox.xMax = abbox.yMax = LONG_MIN;
+// 	abbox.xMin = abbox.yMin = LONG_MAX;
+// 	abbox.xMax = abbox.yMax = LONG_MIN;
 
-	FTC_ImageTypeRec image_type;
-	image_type.face_id = &_face_id;
-	image_type.width   = 0;
-	image_type.height  = _text.size;
-	image_type.flags   = FT_LOAD_DEFAULT;
+// 	FTC_ImageTypeRec image_type;
+// 	image_type.face_id = &_face_id;
+// 	image_type.width   = 0;
+// 	image_type.height  = _text.size;
+// 	image_type.flags   = FT_LOAD_DEFAULT;
 
-	// decode UTF8
-	uint16_t unicode = '\0';
-	std::queue<FT_UInt32> unicode_q;
-	{
-		uint16_t len = (uint16_t)strlen(str);
-		uint16_t n   = 0;
-		while (n < len) {
-			unicode = decodeUTF8((uint8_t *)str, &n, len - n);
-			unicode_q.push(unicode);
-		}
-	}
+// 	// decode UTF8
+// 	uint16_t unicode = '\0';
+// 	std::queue<FT_UInt32> unicode_q;
+// 	{
+// 		uint16_t len = (uint16_t)strlen(str);
+// 		uint16_t n   = 0;
+// 		while (n < len) {
+// 			unicode = decodeUTF8((uint8_t *)str, &n, len - n);
+// 			unicode_q.push(unicode);
+// 		}
+// 	}
 
-	FT_Int cmap_index;
-	{
-		FT_Size asize = NULL;
-		FTC_ScalerRec scaler;
-		scaler.face_id = &_face_id;
-		scaler.width   = 0;
-		scaler.height  = _text.size;
-		scaler.pixel   = true;
-		scaler.x_res   = 0;
-		scaler.y_res   = 0;
+// 	FT_Int cmap_index;
+// 	{
+// 		FT_Size asize = NULL;
+// 		FTC_ScalerRec scaler;
+// 		scaler.face_id = &_face_id;
+// 		scaler.width   = 0;
+// 		scaler.height  = _text.size;
+// 		scaler.pixel   = true;
+// 		scaler.x_res   = 0;
+// 		scaler.y_res   = 0;
 
-		error = FTC_Manager_LookupSize(_ftc_manager, &scaler, &asize);
-		if (error) {
-			return written_char_num;
-		}
-		cmap_index = FT_Get_Charmap_Index(asize->face->charmap);
-		ascender   = asize->face->size->metrics.ascender;
-	}
+// 		error = FTC_Manager_LookupSize(_ftc_manager, &scaler, &asize);
+// 		if (error) {
+// 			return written_char_num;
+// 		}
+// 		cmap_index = FT_Get_Charmap_Index(asize->face->charmap);
+// 		ascender   = asize->face->size->metrics.ascender;
+// 	}
 
-	// Before starting the rendering loop, count lines and adjust position
-	int32_t total_lines = 1;
-	const char* text_ptr = str;
-	while (*text_ptr) {
-		if (*text_ptr == '\n') {
-			total_lines++;
-		}
-		text_ptr++;
-	}
+// 	// Before starting the rendering loop, count lines and adjust position
+// 	int32_t total_lines = 1;
+// 	const char* text_ptr = str;
+// 	while (*text_ptr) {
+// 		if (*text_ptr == '\n') {
+// 			total_lines++;
+// 		}
+// 		text_ptr++;
+// 	}
 
-	// Adjust initial y position for multiline text based on alignment
-	if (total_lines > 1) {
-		int32_t block_height = (total_lines - 1) * (int32_t)(getFontMaxHeight() * _text.line_space_ratio);
-		switch (align) {
-			case Align::MiddleLeft:
-			case Align::MiddleCenter:
-			case Align::MiddleRight:
-				y -= block_height / 2;
-				break;
-			case Align::BottomLeft:
-			case Align::BottomCenter:
-			case Align::BottomRight:
-				y -= block_height;
-				break;
-			default:
-				// Top alignment needs no adjustment
-				break;
-		}
-	}
+// 	// Adjust initial y position for multiline text based on alignment
+// 	if (total_lines > 1) {
+// 		int32_t block_height = (total_lines - 1) * (int32_t)(getFontMaxHeight() * _text.line_space_ratio);
+// 		switch (align) {
+// 			case Align::MiddleLeft:
+// 			case Align::MiddleCenter:
+// 			case Align::MiddleRight:
+// 				y -= block_height / 2;
+// 				break;
+// 			case Align::BottomLeft:
+// 			case Align::BottomCenter:
+// 			case Align::BottomRight:
+// 				y -= block_height;
+// 				break;
+// 			default:
+// 				// Top alignment needs no adjustment
+// 				break;
+// 		}
+// 	}
 
-	// Rendering loop
-	while (unicode_q.size() != 0) {
-		FT_Vector offset       = {0, 0};
-		FT_Vector bearing_left = {0, 0};
-		std::queue<FT_UInt32> rendering_unicode_q;
-		FT_BBox bbox;
-		bbox.xMin = bbox.yMin = LONG_MAX;
-		bbox.xMax = bbox.yMax = LONG_MIN;
+// 	// Rendering loop
+// 	while (unicode_q.size() != 0) {
+// 		FT_Vector offset       = {0, 0};
+// 		FT_Vector bearing_left = {0, 0};
+// 		std::queue<FT_UInt32> rendering_unicode_q;
+// 		FT_BBox bbox;
+// 		bbox.xMin = bbox.yMin = LONG_MAX;
+// 		bbox.xMax = bbox.yMax = LONG_MIN;
 
-		detect_control_char   = false;
-		current_line_position = {x, y};
-		image_type.flags      = FT_LOAD_DEFAULT;
-		bool isLineFirstChar  = true;
+// 		detect_control_char   = false;
+// 		current_line_position = {x, y};
+// 		image_type.flags      = FT_LOAD_DEFAULT;
+// 		bool isLineFirstChar  = true;
 
-		// Glyph extraction
-		while (unicode_q.size() != 0 && detect_control_char == false) {
-			FT_Glyph aglyph;
-			FT_UInt glyph_index;
-			FT_BBox glyph_bbox;
+// 		// Glyph extraction
+// 		while (unicode_q.size() != 0 && detect_control_char == false) {
+// 			FT_Glyph aglyph;
+// 			FT_UInt glyph_index;
+// 			FT_BBox glyph_bbox;
 
-			unicode = unicode_q.front();
-			switch (unicode) {
-			case '\r':
-				[[fallthrough]]; // Fall Through
-			case '\n':
-				detect_control_char = true;
-				break;
-			default:
-				glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache,
-				                                   &_face_id,
-				                                   cmap_index,
-				                                   unicode);
+// 			unicode = unicode_q.front();
+// 			switch (unicode) {
+// 			case '\r':
+// 				[[fallthrough]]; // Fall Through
+// 			case '\n':
+// 				detect_control_char = true;
+// 				break;
+// 			default:
+// 				glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache,
+// 				                                   &_face_id,
+// 				                                   cmap_index,
+// 				                                   unicode);
 
-				error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
-				if (error) {
-					debugPrintf((_debug_level & OFR_ERROR), "FTC_ImageCache_Lookup error: 0x%02X\n", error);
-					return written_char_num;
-				}
+// 				error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
+// 				if (error) {
+// 					debugPrintf((_debug_level & OFR_ERROR), "FTC_ImageCache_Lookup error: 0x%02X\n", error);
+// 					return written_char_num;
+// 				}
 
-				FT_Glyph_Get_CBox(aglyph, FT_GLYPH_BBOX_PIXELS, &glyph_bbox);
-				if (isLineFirstChar == true) {
-					// Get bearing X
-					FT_Face aface;
-					FTC_Manager_LookupFace(_ftc_manager, &_face_id, &aface);
-					bearing_left.x = (aface->glyph->metrics.horiBearingX >> 6);
-					// nothing to do for bearing.y
-					isLineFirstChar = false;
-				}
+// 				FT_Glyph_Get_CBox(aglyph, FT_GLYPH_BBOX_PIXELS, &glyph_bbox);
+// 				if (isLineFirstChar == true) {
+// 					// Get bearing X
+// 					FT_Face aface;
+// 					FTC_Manager_LookupFace(_ftc_manager, &_face_id, &aface);
+// 					bearing_left.x = (aface->glyph->metrics.horiBearingX >> 6);
+// 					// nothing to do for bearing.y
+// 					isLineFirstChar = false;
+// 				}
 
-				// Move coordinates on the grid
-				glyph_bbox.xMin += x;
-				glyph_bbox.xMax += x;
-				glyph_bbox.yMin += y;
-				glyph_bbox.yMax += y;
+// 				// Move coordinates on the grid
+// 				glyph_bbox.xMin += x;
+// 				glyph_bbox.xMax += x;
+// 				glyph_bbox.yMin += y;
+// 				glyph_bbox.yMax += y;
 
-				// Merge bbox
-				bbox.xMin = std::min(bbox.xMin, glyph_bbox.xMin);
-				bbox.yMin = std::min(bbox.yMin, glyph_bbox.yMin);
-				bbox.xMax = std::max(bbox.xMax, glyph_bbox.xMax);
-				bbox.yMax = std::max(bbox.yMax, glyph_bbox.yMax);
+// 				// Merge bbox
+// 				bbox.xMin = std::min(bbox.xMin, glyph_bbox.xMin);
+// 				bbox.yMin = std::min(bbox.yMin, glyph_bbox.yMin);
+// 				bbox.xMax = std::max(bbox.xMax, glyph_bbox.xMax);
+// 				bbox.yMax = std::max(bbox.yMax, glyph_bbox.yMax);
 
-				x += (aglyph->advance.x >> 16);
-				rendering_unicode_q.push(unicode);
-			}
-			unicode_q.pop();
-		}
+// 				x += (aglyph->advance.x >> 16);
+// 				rendering_unicode_q.push(unicode);
+// 			}
+// 			unicode_q.pop();
+// 		}
 
-		// Check that we really grew the string bbox
-		if (bbox.xMin > bbox.xMax) {
-			// Failed
-			bbox.xMin = bbox.yMin = 0;
-			bbox.xMax = bbox.yMax = 0;
-		} else {
-			// Transform coordinate space differences
-			bbox.yMax = y - (bbox.yMax - y) + ((ascender) >> 6);
-			bbox.yMin = y + (y - bbox.yMin) + ((ascender) >> 6);
-			if (bbox.yMax < bbox.yMin) {
-				std::swap(bbox.yMax, bbox.yMin);
-			}
-			// Correct slight misalignment of X-axis
-			offset.x = bbox.xMin - current_line_position.x;
-		}
+// 		// Check that we really grew the string bbox
+// 		if (bbox.xMin > bbox.xMax) {
+// 			// Failed
+// 			bbox.xMin = bbox.yMin = 0;
+// 			bbox.xMax = bbox.yMax = 0;
+// 		} else {
+// 			// Transform coordinate space differences
+// 			bbox.yMax = y - (bbox.yMax - y) + ((ascender) >> 6);
+// 			bbox.yMin = y + (y - bbox.yMin) + ((ascender) >> 6);
+// 			if (bbox.yMax < bbox.yMin) {
+// 				std::swap(bbox.yMax, bbox.yMin);
+// 			}
+// 			// Correct slight misalignment of X-axis
+// 			offset.x = bbox.xMin - current_line_position.x;
+// 		}
 
-		// Calculate alignment offset
-		switch (align) {
-		case Align::Left:
-			// Fallthrough
-		case Align::TopLeft:
-			// Nothing to do
-			offset.x -= bearing_left.x;
-			break;
-		case Align::MiddleLeft:
-			offset.x -= bearing_left.x;
-			offset.y += ((bbox.yMax - bbox.yMin) );
-			break;
-		case Align::BottomLeft:
-			offset.x -= bearing_left.x;
-			offset.y += ((bbox.yMax - bbox.yMin) * 2);
-			break;
-		case Align::Center:
-			// Fallthrough
-		case Align::TopCenter:
-			offset.x += ((bbox.xMax - bbox.xMin) / 2);
-			offset.x -= bearing_left.x;
-			current_line_position.x -= (bearing_left.x / 2);
-			break;
-		case Align::MiddleCenter:
-			offset.x += ((bbox.xMax - bbox.xMin) / 2);
-			offset.x -= bearing_left.x;
-			current_line_position.x -= (bearing_left.x / 2);
+// 		// Calculate alignment offset
+// 		switch (align) {
+// 		case Align::Left:
+// 			// Fallthrough
+// 		case Align::TopLeft:
+// 			// Nothing to do
+// 			offset.x -= bearing_left.x;
+// 			break;
+// 		case Align::MiddleLeft:
+// 			offset.x -= bearing_left.x;
+// 			offset.y += ((bbox.yMax - bbox.yMin) );
+// 			break;
+// 		case Align::BottomLeft:
+// 			offset.x -= bearing_left.x;
+// 			offset.y += ((bbox.yMax - bbox.yMin) * 2);
+// 			break;
+// 		case Align::Center:
+// 			// Fallthrough
+// 		case Align::TopCenter:
+// 			offset.x += ((bbox.xMax - bbox.xMin) / 2);
+// 			offset.x -= bearing_left.x;
+// 			current_line_position.x -= (bearing_left.x / 2);
+// 			break;
+// 		case Align::MiddleCenter:
+// 			offset.x += ((bbox.xMax - bbox.xMin) / 2);
+// 			offset.x -= bearing_left.x;
+// 			current_line_position.x -= (bearing_left.x / 2);
 
-			offset.y += ((bbox.yMax - bbox.yMin));
-			break;
-		case Align::BottomCenter:
-			offset.x += ((bbox.xMax - bbox.xMin) / 2);
-			offset.x -= bearing_left.x;
-			current_line_position.x -= (bearing_left.x / 2);
+// 			offset.y += ((bbox.yMax - bbox.yMin));
+// 			break;
+// 		case Align::BottomCenter:
+// 			offset.x += ((bbox.xMax - bbox.xMin) / 2);
+// 			offset.x -= bearing_left.x;
+// 			current_line_position.x -= (bearing_left.x / 2);
 
-			offset.y += ((bbox.yMax - bbox.yMin) * 2);
-			break;
-		case Align::Right:
-			// Fallthrough
-		case Align::TopRight:
-			offset.x += (bbox.xMax - bbox.xMin);
-			offset.x -= bearing_left.x;
-			current_line_position.x -= bearing_left.x;
-			break;
-		case Align::MiddleRight:
-			offset.x += (bbox.xMax - bbox.xMin);
-			offset.x -= bearing_left.x;
-			current_line_position.x -= bearing_left.x;
+// 			offset.y += ((bbox.yMax - bbox.yMin) * 2);
+// 			break;
+// 		case Align::Right:
+// 			// Fallthrough
+// 		case Align::TopRight:
+// 			offset.x += (bbox.xMax - bbox.xMin);
+// 			offset.x -= bearing_left.x;
+// 			current_line_position.x -= bearing_left.x;
+// 			break;
+// 		case Align::MiddleRight:
+// 			offset.x += (bbox.xMax - bbox.xMin);
+// 			offset.x -= bearing_left.x;
+// 			current_line_position.x -= bearing_left.x;
 
-			offset.y += ((bbox.yMax - bbox.yMin) );
-			break;
-		case Align::BottomRight:
-			offset.x += (bbox.xMax - bbox.xMin);
-			offset.x -= bearing_left.x;
-			current_line_position.x -= bearing_left.x;
+// 			offset.y += ((bbox.yMax - bbox.yMin) );
+// 			break;
+// 		case Align::BottomRight:
+// 			offset.x += (bbox.xMax - bbox.xMin);
+// 			offset.x -= bearing_left.x;
+// 			current_line_position.x -= bearing_left.x;
 
-			offset.y += ((bbox.yMax - bbox.yMin) *2);
-			break;
-		default:
-			break;
-		}
+// 			offset.y += ((bbox.yMax - bbox.yMin) *2);
+// 			break;
+// 		default:
+// 			break;
+// 		}
 
-		bbox.xMin -= offset.x;
-		bbox.xMax -= offset.x;
-		bbox.yMin -= offset.y;
-		bbox.yMax -= offset.y;
+// 		bbox.xMin -= offset.x;
+// 		bbox.xMax -= offset.x;
+// 		bbox.yMin -= offset.y;
+// 		bbox.yMax -= offset.y;
 
-		if (_text.bg_fill_method == BgFillMethod::Block) {
-			// Clear the area to be rendering if fill method is Block
-			if (_flags.enable_optimized_drawing) {
-				// We can use fastHLine method
-				for (int _y = bbox.yMin; _y <= bbox.yMax; _y++) {
-					_drawFastHLine(bbox.xMin, _y, bbox.xMax - bbox.xMin, bg);
-				}
-			} else {
-				for (int _y = bbox.yMin; _y <= bbox.yMax; _y++) {
-					for (int _x = bbox.xMin; _x <= bbox.xMax; _x++) {
-						_drawPixel(_x, _y, bg);
-					}
-				}
-			}
-		}
+// 		if (_text.bg_fill_method == BgFillMethod::Block) {
+// 			// Clear the area to be rendering if fill method is Block
+// 			if (_flags.enable_optimized_drawing) {
+// 				// We can use fastHLine method
+// 				for (int _y = bbox.yMin; _y <= bbox.yMax; _y++) {
+// 					_drawFastHLine(bbox.xMin, _y, bbox.xMax - bbox.xMin, bg);
+// 				}
+// 			} else {
+// 				for (int _y = bbox.yMin; _y <= bbox.yMax; _y++) {
+// 					for (int _x = bbox.xMin; _x <= bbox.xMax; _x++) {
+// 						_drawPixel(_x, _y, bg);
+// 					}
+// 				}
+// 			}
+// 		}
 
-		// Restore coordinates
-		x = current_line_position.x;
-		y = current_line_position.y;
+// 		// Restore coordinates
+// 		x = current_line_position.x;
+// 		y = current_line_position.y;
 
-		if (drawing == Drawing::Execute) {
-			image_type.flags              = FT_LOAD_RENDER;
-			_saved_state.drawn_bg_point.x = (x - offset.x);
-			uint16_t rendering_unicode;
+// 		if (drawing == Drawing::Execute) {
+// 			image_type.flags              = FT_LOAD_RENDER;
+// 			_saved_state.drawn_bg_point.x = (x - offset.x);
+// 			uint16_t rendering_unicode;
 
-			while (rendering_unicode_q.size() != 0) {
-				rendering_unicode = rendering_unicode_q.front();
+// 			while (rendering_unicode_q.size() != 0) {
+// 				rendering_unicode = rendering_unicode_q.front();
 
-				FT_UInt glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache,
-				                                           &_face_id,
-				                                           cmap_index,
-				                                           rendering_unicode);
-				FT_Glyph aglyph;
-#ifdef FREERTOS_CONFIG_H
-				if (g_UseRenderTask) {
-					if (g_RenderTaskHandle == NULL) {
-						debugPrintf((_debug_level & OFR_INFO), "Create render task\n");
-						const uint8_t RUNNING_CORE = 1;
-						const uint8_t PRIORITY     = 1;
-						xTaskCreateUniversal(RenderTask,
-						                     "RenderTask",
-						                     g_RenderTaskStackSize, // Seems to need a lot of memory.
-						                     NULL,
-						                     PRIORITY,
-						                     &g_RenderTaskHandle,
-						                     RUNNING_CORE);
-					}
-					while (g_RenderTaskStatus != IDLE) {
-						vTaskDelay(1);
-					}
-					g_RenderTaskStatus              = LOCK;
-					g_TaskParameter.ftc_image_cache = _ftc_image_cache;
-					g_TaskParameter.image_type      = image_type;
-					g_TaskParameter.glyph_index     = glyph_index;
-					g_TaskParameter.debug_level     = _debug_level;
+// 				FT_UInt glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache,
+// 				                                           &_face_id,
+// 				                                           cmap_index,
+// 				                                           rendering_unicode);
+// 				FT_Glyph aglyph;
+// #ifdef FREERTOS_CONFIG_H
+// 				if (g_UseRenderTask) {
+// 					if (g_RenderTaskHandle == NULL) {
+// 						debugPrintf((_debug_level & OFR_INFO), "Create render task\n");
+// 						const uint8_t RUNNING_CORE = 1;
+// 						const uint8_t PRIORITY     = 1;
+// 						xTaskCreateUniversal(RenderTask,
+// 						                     "RenderTask",
+// 						                     g_RenderTaskStackSize, // Seems to need a lot of memory.
+// 						                     NULL,
+// 						                     PRIORITY,
+// 						                     &g_RenderTaskHandle,
+// 						                     RUNNING_CORE);
+// 					}
+// 					while (g_RenderTaskStatus != IDLE) {
+// 						vTaskDelay(1);
+// 					}
+// 					g_RenderTaskStatus              = LOCK;
+// 					g_TaskParameter.ftc_image_cache = _ftc_image_cache;
+// 					g_TaskParameter.image_type      = image_type;
+// 					g_TaskParameter.glyph_index     = glyph_index;
+// 					g_TaskParameter.debug_level     = _debug_level;
 
-					g_RenderTaskStatus = RENDERING;
-					while (g_RenderTaskStatus == RENDERING) {
-						vTaskDelay(1);
-					}
-					debugPrintf((g_TaskParameter.debug_level & OFR_INFO), "Render task Finish\n");
-					aglyph             = g_TaskParameter.aglyph;
-					error              = g_TaskParameter.error;
-					g_RenderTaskStatus = IDLE;
-				} else {
-					error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
-				}
-#else
-				error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
-#endif
-				if (error) {
-					debugPrintf((_debug_level & OFR_ERROR), "FTC_ImageCache_Lookup error: 0x%02X\n", error);
-					return written_char_num;
-				}
-				FT_Vector pos = {(x - offset.x), (y - offset.y)};
-				// Change baseline to left top
-				pos.y += ((ascender) >> 6);
+// 					g_RenderTaskStatus = RENDERING;
+// 					while (g_RenderTaskStatus == RENDERING) {
+// 						vTaskDelay(1);
+// 					}
+// 					debugPrintf((g_TaskParameter.debug_level & OFR_INFO), "Render task Finish\n");
+// 					aglyph             = g_TaskParameter.aglyph;
+// 					error              = g_TaskParameter.error;
+// 					g_RenderTaskStatus = IDLE;
+// 				} else {
+// 					error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
+// 				}
+// #else
+// 				error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
+// #endif
+// 				if (error) {
+// 					debugPrintf((_debug_level & OFR_ERROR), "FTC_ImageCache_Lookup error: 0x%02X\n", error);
+// 					return written_char_num;
+// 				}
+// 				FT_Vector pos = {(x - offset.x), (y - offset.y)};
+// 				// Change baseline to left top
+// 				pos.y += ((ascender) >> 6);
 
-				{
-					FT_BitmapGlyph bit = (FT_BitmapGlyph)aglyph;
+// 				{
+// 					FT_BitmapGlyph bit = (FT_BitmapGlyph)aglyph;
 
-					draw2screen(bit, pos.x, pos.y, fg, bg);
+// 					draw2screen(bit, pos.x, pos.y, fg, bg);
 
-					if (_saved_state.drawn_bg_point.x < (pos.x + (uint32_t)bit->bitmap.width)) {
-						_saved_state.drawn_bg_point.x = pos.x + (uint32_t)bit->bitmap.width;
-					}
+// 					if (_saved_state.drawn_bg_point.x < (pos.x + (uint32_t)bit->bitmap.width)) {
+// 						_saved_state.drawn_bg_point.x = pos.x + (uint32_t)bit->bitmap.width;
+// 					}
 
-					written_char_num++;
-				}
-				x += (aglyph->advance.x >> 16);
+// 					written_char_num++;
+// 				}
+// 				x += (aglyph->advance.x >> 16);
 
-				rendering_unicode_q.pop();
-			}
-		}
+// 				rendering_unicode_q.pop();
+// 			}
+// 		}
 
-		if (detect_control_char) {
-			switch (unicode) {
-			case '\r':
-				x = initial_position.x;
-				break;
-			case '\n':
-				x = initial_position.x;
-				y += (int32_t)(getFontMaxHeight() * _text.line_space_ratio);
-				break;
-			default:
-				// No supported control char
-				break;
-			}
-		}
+// 		if (detect_control_char) {
+// 			switch (unicode) {
+// 			case '\r':
+// 				x = initial_position.x;
+// 				break;
+// 			case '\n':
+// 				x = initial_position.x;
+// 				y += (int32_t)(getFontMaxHeight() * _text.line_space_ratio);
+// 				break;
+// 			default:
+// 				// No supported control char
+// 				break;
+// 			}
+// 		}
 
-		// Merge bbox
-		abbox.xMin = std::min(bbox.xMin, abbox.xMin);
-		abbox.yMin = std::min(bbox.yMin, abbox.yMin);
-		abbox.xMax = std::max(bbox.xMax, abbox.xMax);
-		abbox.yMax = std::max(bbox.yMax, abbox.yMax);
-	} // End of rendering loop
+// 		// Merge bbox
+// 		abbox.xMin = std::min(bbox.xMin, abbox.xMin);
+// 		abbox.yMin = std::min(bbox.yMin, abbox.yMin);
+// 		abbox.xMax = std::max(bbox.xMax, abbox.xMax);
+// 		abbox.yMax = std::max(bbox.yMax, abbox.yMax);
+// 	} // End of rendering loop
 
-	if (detect_control_char && unicode == '\n') {
-		// If string end with '\n' control char, expand bbox
-		abbox.yMax += (int32_t)(getFontMaxHeight() * _text.line_space_ratio);
-	}
+// 	if (detect_control_char && unicode == '\n') {
+// 		// If string end with '\n' control char, expand bbox
+// 		abbox.yMax += (int32_t)(getFontMaxHeight() * _text.line_space_ratio);
+// 	}
 
-	_text.cursor = {x, y};
-	return written_char_num;
-}
+// 	_text.cursor = {x, y};
+// 	return written_char_num;
+// }
 
 /*!
  * @brief Render single character.
