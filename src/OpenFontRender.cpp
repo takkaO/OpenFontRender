@@ -507,8 +507,6 @@ uint16_t OpenFontRender::drawHString(
     image_type.width = scaler.width;
     image_type.height = scaler.height;
     image_type.flags = FT_LOAD_DEFAULT;
-	// image_type.flags = FT_LOAD_RENDER;
-
 
 	uint16_t chars_written = 0;
     int32_t pen_x = x;
@@ -528,52 +526,52 @@ uint16_t OpenFontRender::drawHString(
 		}
 	}
 
-int32_t total_width = 0;
-FT_BBox string_bbox;
-string_bbox.xMin = string_bbox.yMin = LONG_MAX;
-string_bbox.xMax = string_bbox.yMax = LONG_MIN;
-bool isFirstChar = true;
-int32_t current_x = 0;
+	int32_t total_width = 0;
+	FT_BBox string_bbox;
+	string_bbox.xMin = string_bbox.yMin = LONG_MAX;
+	string_bbox.xMax = string_bbox.yMax = LONG_MIN;
+	bool isFirstChar = true;
+	int32_t current_x = 0;
 
-for (uint16_t unicode : unicode_chars) {
-	FT_UInt glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache,
-											&_face_id,
-											cmap_index,
-											unicode);
+	for (uint16_t unicode : unicode_chars) {
+		FT_UInt glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache,
+												&_face_id,
+												cmap_index,
+												unicode);
 
-	// Load glyph
-	FT_Glyph aglyph;
-	error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
-	if (error) continue;
+		// Load glyph
+		FT_Glyph aglyph;
+		error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
+		if (error) continue;
 
-	// Get glyph's bounding box
-	FT_BBox glyph_bbox;
-	FT_Glyph_Get_CBox(aglyph, FT_GLYPH_BBOX_PIXELS, &glyph_bbox);
+		// Get glyph's bounding box
+		FT_BBox glyph_bbox;
+		FT_Glyph_Get_CBox(aglyph, FT_GLYPH_BBOX_PIXELS, &glyph_bbox);
 
-	// Handle first character's bearing
-	if (isFirstChar) {
-		FT_Face aface;
-		FTC_Manager_LookupFace(_ftc_manager, &_face_id, &aface);
-		current_x = (aface->glyph->metrics.horiBearingX >> 6);
-		isFirstChar = false;
+		// Handle first character's bearing
+		if (isFirstChar) {
+			FT_Face aface;
+			FTC_Manager_LookupFace(_ftc_manager, &_face_id, &aface);
+			current_x = (aface->glyph->metrics.horiBearingX >> 6);
+			isFirstChar = false;
+		}
+
+		// Position glyph bbox relative to current position
+		glyph_bbox.xMin += current_x;
+		glyph_bbox.xMax += current_x;
+
+		// Merge with string bbox
+		string_bbox.xMin = std::min(string_bbox.xMin, glyph_bbox.xMin);
+		string_bbox.xMax = std::max(string_bbox.xMax, glyph_bbox.xMax);
+
+		// Move to next position
+		current_x += (aglyph->advance.x >> 16);
 	}
 
-	// Position glyph bbox relative to current position
-	glyph_bbox.xMin += current_x;
-	glyph_bbox.xMax += current_x;
-
-	// Merge with string bbox
-	string_bbox.xMin = std::min(string_bbox.xMin, glyph_bbox.xMin);
-	string_bbox.xMax = std::max(string_bbox.xMax, glyph_bbox.xMax);
-
-	// Move to next position
-	current_x += (aglyph->advance.x >> 16);
-}
-
-// Calculate total width from the merged bounding box
-if (string_bbox.xMin <= string_bbox.xMax) {
-	total_width = string_bbox.xMax - string_bbox.xMin;
-}
+	// Calculate total width from the merged bounding box
+	if (string_bbox.xMin <= string_bbox.xMax) {
+		total_width = string_bbox.xMax - string_bbox.xMin;
+	}
     
 	// Calculate position based on alignment
 	int32_t baseline_y = y;
