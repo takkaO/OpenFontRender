@@ -514,15 +514,21 @@ uint16_t OpenFontRender::drawHString(
 	// First decode all characters to Unicode
 	uint16_t unicode = '\0';
 	std::vector<uint16_t> unicode_chars;
-	{
-		uint16_t len = strlen(str);
-		uint16_t n = 0;
-		while (n < len) {
-			unicode = decodeUTF8((uint8_t *)str, &n, len - n);
-			if (unicode < 32) {  // Skip control chars
-				continue;
-			}
-			unicode_chars.push_back(unicode);
+	uint16_t len = strlen(str);
+	uint16_t n = 0;
+	while (n < len) {
+		unicode = decodeUTF8((uint8_t *)str, &n, len - n);
+		if (unicode < 32 && unicode != '\n') {  // Skip control chars except newline
+			continue;
+		}
+		unicode_chars.push_back(unicode);
+	}
+
+	// Count number of lines by counting newlines
+	size_t num_lines = 1; // Start with 1 since even without newlines we have 1 line
+	for (uint16_t unicode : unicode_chars) {
+		if (unicode == '\n') {
+			num_lines++;
 		}
 	}
 
@@ -575,6 +581,7 @@ uint16_t OpenFontRender::drawHString(
     
 	// Calculate position based on alignment
 	int32_t baseline_y = y;
+	int32_t total_height = (num_lines - 1) * (ascender + descender) * _text.line_space_ratio + (ascender + descender);
 
 	switch (align) {
 		case Align::TopLeft:
@@ -589,14 +596,14 @@ uint16_t OpenFontRender::drawHString(
 			pen_x -= total_width;
 			break;
 		case Align::MiddleLeft:
-			baseline_y += (ascender + descender) / 2;
+			baseline_y += (total_height) / 2;
 			break;
 		case Align::MiddleCenter:
-			baseline_y += (ascender + descender) / 2;
+			baseline_y += (total_height) / 2;
 			pen_x -= (total_width / 2);
 			break;
 		case Align::MiddleRight:
-			baseline_y += (ascender + descender) / 2;
+			baseline_y += (total_height) / 2;
 			pen_x -= total_width;
 			break;
 		case Align::BottomLeft:
