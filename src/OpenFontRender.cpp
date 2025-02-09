@@ -581,8 +581,8 @@ uint16_t OpenFontRender::drawHString(
     
 	// Calculate position based on alignment
 	int32_t baseline_y = y;
-	int32_t total_height = (num_lines - 1) * (ascender + descender) * _text.line_space_ratio + (ascender + descender);
-
+	int32_t total_height = (num_lines - 1) * (ascender - descender) * _text.line_space_ratio + (ascender - descender);
+	int32_t line_height = (ascender - descender) * _text.line_space_ratio;
 	switch (align) {
 		case Align::TopLeft:
 			baseline_y += ascender;
@@ -596,14 +596,28 @@ uint16_t OpenFontRender::drawHString(
 			pen_x -= total_width;
 			break;
 		case Align::MiddleLeft:
-			baseline_y += (total_height) / 2;
+			if (num_lines == 1) {
+				baseline_y += ascender/2;
+			} else {
+				baseline_y += (ascender - (total_height) / 2);
+			}
 			break;
 		case Align::MiddleCenter:
-			baseline_y += (total_height) / 2;
+			Serial.printf("baseline_y: %d, total_height: %d, ascender: %d, descender: %d, baseline_y += (total_height) / 2 %d \n", 
+			baseline_y, total_height, ascender, descender, baseline_y + (total_height) / 2);
+			if (num_lines == 1) {
+				baseline_y += ascender/2;
+			} else {
+				baseline_y += (ascender - (total_height) / 2);
+			}
 			pen_x -= (total_width / 2);
 			break;
 		case Align::MiddleRight:
-			baseline_y += (total_height) / 2;
+			if (num_lines == 1) {
+				baseline_y += ascender/2;
+			} else {
+				baseline_y += (ascender - (total_height) / 2);
+			}
 			pen_x -= total_width;
 			break;
 		case Align::BottomLeft:
@@ -619,7 +633,18 @@ uint16_t OpenFontRender::drawHString(
 			break;
 	}
 
+	int32_t current_line = 0;
+	int32_t original_pen_x = pen_x;
+	int32_t original_baseline_y = baseline_y;
+
     for (uint16_t unicode : unicode_chars) {
+        if (unicode == '\n') {
+            current_line++;
+            pen_x = original_pen_x;
+            baseline_y = original_baseline_y + (current_line * line_height);
+            continue;
+        }
+
 		image_type.flags = FT_LOAD_RENDER;
 		if (!_ftc_cmap_cache) {
 			Serial.println("Cache is null!");
