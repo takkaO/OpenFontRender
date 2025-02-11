@@ -509,7 +509,6 @@ uint16_t OpenFontRender::drawHString(
     image_type.flags = FT_LOAD_DEFAULT;
 
 	uint16_t chars_written = 0;
-    int32_t pen_x = x;
 
 	// First decode all characters to Unicode
 	uint16_t unicode = '\0';
@@ -532,20 +531,41 @@ uint16_t OpenFontRender::drawHString(
 		}
 	}
 
-	int32_t total_width = 0;
-	FT_BBox string_bbox;
-	string_bbox.xMin = string_bbox.yMin = LONG_MAX;
-	string_bbox.xMax = string_bbox.yMax = LONG_MIN;
-	bool isFirstChar = true;
+	// bool isFirstChar = true;
 	int32_t current_x = 0;
 
-	for (uint16_t unicode : unicode_chars) {
-		FT_UInt glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache,
-												&_face_id,
-												cmap_index,
-												unicode);
+	std::vector<int32_t> lineWidths;
+	FT_BBox line_bbox; // Initialize a bounding box for the current line
+	line_bbox.xMin = INT32_MAX;
+	line_bbox.xMax = INT32_MIN;
+	bool isFirstChar = true;
 
-		// Load glyph
+	for (size_t i = 0; i < unicode_chars.size(); ++i) {
+		uint16_t unicode = unicode_chars[i];
+
+		// Peek ahead to the next character
+		uint16_t next_unicode = (i + 1 < unicode_chars.size()) ? unicode_chars[i + 1] : '\0';
+
+		if (unicode == ' ' && next_unicode == '\n') {
+			continue; // Skip adding space if followed by a newline
+		}
+
+		if (unicode == '\n') {
+			// Calculate line width
+			if (line_bbox.xMin <= line_bbox.xMax) {
+				int32_t lineWidth = line_bbox.xMax - line_bbox.xMin;
+				lineWidths.push_back(lineWidth);
+				Serial.printf("Line width calculated (excluding trailing spaces): %d\n", lineWidth);
+			}
+			// Reset line_bbox for the next line
+			line_bbox.xMin = INT32_MAX;
+			line_bbox.xMax = INT32_MIN;
+			isFirstChar = true;
+			continue;
+		}
+
+		// Load and process glyph
+		FT_UInt glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache, &_face_id, cmap_index, unicode);
 		FT_Glyph aglyph;
 		error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
 		if (error) continue;
@@ -554,142 +574,137 @@ uint16_t OpenFontRender::drawHString(
 		FT_BBox glyph_bbox;
 		FT_Glyph_Get_CBox(aglyph, FT_GLYPH_BBOX_PIXELS, &glyph_bbox);
 
-		// Handle first character's bearing
+		// Adjust for horizontal bearing if it's the first character in the line
 		if (isFirstChar) {
 			FT_Face aface;
 			FTC_Manager_LookupFace(_ftc_manager, &_face_id, &aface);
-			current_x = (aface->glyph->metrics.horiBearingX >> 6);
+			int32_t horiBearingX = aface->glyph->metrics.horiBearingX >> 6;
+			current_x -= horiBearingX; // Adjust starting position
 			isFirstChar = false;
 		}
+
 
 		// Position glyph bbox relative to current position
 		glyph_bbox.xMin += current_x;
 		glyph_bbox.xMax += current_x;
 
-		// Merge with string bbox
-		string_bbox.xMin = std::min(string_bbox.xMin, glyph_bbox.xMin);
-		string_bbox.xMax = std::max(string_bbox.xMax, glyph_bbox.xMax);
+		// Merge with line bbox
+		line_bbox.xMin = std::min(line_bbox.xMin, glyph_bbox.xMin);
+		line_bbox.xMax = std::max(line_bbox.xMax, glyph_bbox.xMax);
 
-		// Move to next position
+		// Update current_x based on glyph advance
 		current_x += (aglyph->advance.x >> 16);
 	}
 
-	// Calculate total width from the merged bounding box
-	if (string_bbox.xMin <= string_bbox.xMax) {
-		total_width = string_bbox.xMax - string_bbox.xMin;
+	// Add the last line width if there's no trailing newline
+	if (line_bbox.xMin <= line_bbox.xMax) {
+		int32_t lineWidth = line_bbox.xMax - line_bbox.xMin;
+		lineWidths.push_back(lineWidth);
+		Serial.printf("Last line width calculated (excluding trailing spaces): %d\n", lineWidth);
 	}
     
 	// Calculate position based on alignment
 	int32_t baseline_y = y;
 	int32_t total_height = (num_lines - 1) * (ascender - descender) * _text.line_space_ratio + (ascender - descender);
-	int32_t line_height = (ascender - descender) * _text.line_space_ratio;
+
+	//Get Vertical start position
 	switch (align) {
 		case Align::TopLeft:
-			baseline_y += ascender;
-			break;
 		case Align::TopCenter:
-			baseline_y += ascender;
-			pen_x -= (total_width / 2);
-			break;
 		case Align::TopRight:
 			baseline_y += ascender;
-			pen_x -= total_width;
 			break;
 		case Align::MiddleLeft:
-			if (num_lines == 1) {
-				baseline_y += ascender/2;
-			} else {
-				baseline_y += (ascender - (total_height) / 2);
-			}
-			break;
 		case Align::MiddleCenter:
-			Serial.printf("baseline_y: %d, total_height: %d, ascender: %d, descender: %d, baseline_y += (total_height) / 2 %d \n", 
-			baseline_y, total_height, ascender, descender, baseline_y + (total_height) / 2);
-			if (num_lines == 1) {
-				baseline_y += ascender/2;
-			} else {
-				baseline_y += (ascender - (total_height) / 2);
-			}
-			pen_x -= (total_width / 2);
-			break;
 		case Align::MiddleRight:
-			if (num_lines == 1) {
-				baseline_y += ascender/2;
-			} else {
 				baseline_y += (ascender - (total_height) / 2);
-			}
-			pen_x -= total_width;
 			break;
 		case Align::BottomLeft:
-			baseline_y += descender;
-			break;
 		case Align::BottomCenter:
-			baseline_y += descender;
-			pen_x -= (total_width / 2);
-			break;
 		case Align::BottomRight:
-			baseline_y += descender;
-			pen_x -= total_width;
+			baseline_y += ((ascender - (total_height)) );
 			break;
 	}
 
-	int32_t current_line = 0;
-	int32_t original_pen_x = pen_x;
-	int32_t original_baseline_y = baseline_y;
+	std::vector<std::pair<int32_t, int32_t>> linePositions; // To store starting positions for each line
 
-    for (uint16_t unicode : unicode_chars) {
-        if (unicode == '\n') {
-            current_line++;
-            pen_x = original_pen_x;
-            baseline_y = original_baseline_y + (current_line * line_height);
-            continue;
-        }
+	// calculate x postion for each line.
+	for (int32_t lineWidth : lineWidths) {
+	    int32_t startX = x; // Default starting position
 
-		image_type.flags = FT_LOAD_RENDER;
-		if (!_ftc_cmap_cache) {
-			Serial.println("Cache is null!");
-			Serial.flush();
-			continue;
-		}
-
-		// Handle control characters
-		if (unicode < 32) {
-			Serial.printf("Control char detected: 0x%04X\n", unicode);
-			Serial.flush();
-			continue;
-		}
-
-		FT_UInt glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache,
-													&_face_id,
-                                                  cmap_index,
-                                                  unicode);
-
-        // Load glyph
-        FT_Glyph aglyph;
-        error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
-        if (error) {
-			Serial.printf("FTC_ImageCache_Lookup error: 0x%02X\n", error);
-			Serial.flush();
-			break;
-		}
-		
-		if (aglyph->format != FT_GLYPH_FORMAT_BITMAP) {
-			FT_Error err = FT_Glyph_To_Bitmap(&aglyph, FT_RENDER_MODE_NORMAL, nullptr, true);
-			if (err) {
-				Serial.printf("Failed to convert to bitmap: %d\n", err);
-				Serial.flush();
-				continue;
-			}
-		}
-        
-        // Draw at baseline position
-        FT_BitmapGlyph bit = (FT_BitmapGlyph)aglyph;
-		draw2screen(bit, pen_x, baseline_y, _text.fg_color, _text.bg_color);
-
-        // Advance pen position
-        pen_x += (aglyph->advance.x >> 16);
-        chars_written++;
+		switch (align) {
+        case Align::TopCenter:
+        case Align::MiddleCenter:
+        case Align::BottomCenter:
+            startX -= (lineWidth / 2);
+            break;
+        case Align::TopRight:
+        case Align::MiddleRight:
+        case Align::BottomRight:
+            startX -= lineWidth;
+            break;
+        default:
+            break;
     }
+		linePositions.push_back({startX, baseline_y});
+	}
+
+	for (size_t lineIndex = 0; lineIndex < linePositions.size(); ++lineIndex) {
+			int32_t currentX = linePositions[lineIndex].first;
+			bool isFirstCharInLine = true;
+			for (uint16_t unicode : unicode_chars) {
+				if (unicode == '\n') {
+					// Move to the next line
+					lineIndex++;
+					if (lineIndex < linePositions.size()) {
+						currentX = linePositions[lineIndex].first;
+					}
+					baseline_y +=  (ascender - descender) * _text.line_space_ratio;
+					isFirstCharInLine = true;
+					continue;
+				}
+
+				image_type.flags = FT_LOAD_RENDER;
+				FT_UInt glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache,
+															&_face_id,
+														cmap_index,
+														unicode);
+
+				// Load glyph
+				FT_Glyph aglyph;
+				error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
+				if (error) {
+					Serial.printf("FTC_ImageCache_Lookup error: 0x%02X\n", error);
+					Serial.flush();
+					break;
+				}
+				
+				if (aglyph->format != FT_GLYPH_FORMAT_BITMAP) {
+					FT_Error err = FT_Glyph_To_Bitmap(&aglyph, FT_RENDER_MODE_NORMAL, nullptr, true);
+					if (err) {
+						Serial.printf("Failed to convert to bitmap: %d\n", err);
+						Serial.flush();
+						continue;
+					}
+				}
+
+				// Adjust for horizontal bearing if it's the first character in the line
+				if (isFirstCharInLine) {
+					FT_Face aface;
+					FTC_Manager_LookupFace(_ftc_manager, &_face_id, &aface);
+					int32_t horiBearingX = aface->glyph->metrics.horiBearingX >> 6;
+					currentX -= horiBearingX; // Adjust starting position
+					isFirstCharInLine = false;
+				}
+				
+				// Draw at baseline position
+				FT_BitmapGlyph bit = (FT_BitmapGlyph)aglyph;
+				draw2screen(bit, currentX, baseline_y, _text.fg_color, _text.bg_color);
+
+				currentX += (aglyph->advance.x >> 16);
+				chars_written++;
+			}
+	}
     return chars_written;
 }
 
