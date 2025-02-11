@@ -507,13 +507,6 @@ uint16_t OpenFontRender::drawHString(
  	// Get charmap index once
 	FT_Int cmap_index = FT_Get_Charmap_Index(asize->face->charmap);
 
-	// Validate charmap exists
-	if (!asize->face->charmap) {
-		Serial.println("No charmap found");
-		Serial.flush();
-		return 0;
-	}
-
 	// Get metrics (convert from 26.6 fixed point)
     int32_t ascender = asize->face->size->metrics.ascender >> 6;
     int32_t descender = asize->face->size->metrics.descender >> 6;
@@ -555,6 +548,7 @@ uint16_t OpenFontRender::drawHString(
 	line_bbox.xMin = INT32_MAX;
 	line_bbox.xMax = INT32_MIN;
 	bool isFirstChar = true;
+	int32_t maxLineWidth = 0;
 
 	for (size_t i = 0; i < unicode_chars.size(); ++i) {
 		uint16_t unicode = unicode_chars[i];
@@ -571,6 +565,11 @@ uint16_t OpenFontRender::drawHString(
 			if (line_bbox.xMin <= line_bbox.xMax) {
 				int32_t lineWidth = line_bbox.xMax - line_bbox.xMin;
 				lineWidths.push_back(lineWidth);
+				if (lineWidth > maxLineWidth) {
+					maxLineWidth = lineWidth;
+					abbox.xMin = line_bbox.xMin;
+					abbox.xMax = line_bbox.xMax;
+				}
 			}
 			// Reset line_bbox for the next line
 			line_bbox.xMin = INT32_MAX;
@@ -583,7 +582,7 @@ uint16_t OpenFontRender::drawHString(
 		FT_UInt glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache, &_face_id, cmap_index, unicode);
 		FT_Glyph aglyph;
 		error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
-		if (error) continue;
+		if (error) return 0;
 
 		// Get glyph's bounding box
 		FT_BBox glyph_bbox;
@@ -592,7 +591,8 @@ uint16_t OpenFontRender::drawHString(
 		// Adjust for horizontal bearing if it's the first character in the line
 		if (isFirstChar) {
 			FT_Face aface;
-			FTC_Manager_LookupFace(_ftc_manager, &_face_id, &aface);
+			error = FTC_Manager_LookupFace(_ftc_manager, &_face_id, &aface);
+			if (error) return 0;
 			int32_t horiBearingX = aface->glyph->metrics.horiBearingX >> 6;
 			current_x -= horiBearingX; // Adjust starting position
 			isFirstChar = false;
@@ -607,6 +607,8 @@ uint16_t OpenFontRender::drawHString(
 		line_bbox.xMin = std::min(line_bbox.xMin, glyph_bbox.xMin);
 		line_bbox.xMax = std::max(line_bbox.xMax, glyph_bbox.xMax);
 
+
+
 		// Update current_x based on glyph advance
 		current_x += (aglyph->advance.x >> 16);
 	}
@@ -615,6 +617,11 @@ uint16_t OpenFontRender::drawHString(
 	if (line_bbox.xMin <= line_bbox.xMax) {
 		int32_t lineWidth = line_bbox.xMax - line_bbox.xMin;
 		lineWidths.push_back(lineWidth);
+		if (lineWidth > maxLineWidth) {
+			abbox.xMin = line_bbox.xMin;
+			abbox.xMax = line_bbox.xMax;
+		}
+
 	}
     
 	// Calculate position based on alignment
@@ -643,6 +650,7 @@ uint16_t OpenFontRender::drawHString(
 			break;
 	}
 
+	abbox.yMin = std::min(abbox.yMin, baseline_y - ascender);
 	std::vector<std::pair<int32_t, int32_t>> linePositions; // To store starting positions for each line
 
 	// calculate x postion for each line.
@@ -669,97 +677,94 @@ uint16_t OpenFontRender::drawHString(
 	}
 
 	for (size_t lineIndex = 0; lineIndex < linePositions.size(); ++lineIndex) {
-			int32_t currentX = linePositions[lineIndex].first;
-			bool isFirstCharInLine = true;
-			for (uint16_t unicode : unicode_chars) {
-				if (unicode == '\n') {
-					// Move to the next line
-					lineIndex++;
-					if (lineIndex < linePositions.size()) {
-						currentX = linePositions[lineIndex].first;
-					}
-					baseline_y +=  (ascender - descender) * _text.line_space_ratio;
-					isFirstCharInLine = true;
-					continue;
+		int32_t currentX = linePositions[lineIndex].first;
+		bool isFirstCharInLine = true;
+		for (uint16_t unicode : unicode_chars) {
+			if (unicode == '\n') {
+				// Move to the next line
+				lineIndex++;
+				if (lineIndex < linePositions.size()) {
+					currentX = linePositions[lineIndex].first;
 				}
-
-				image_type.flags = FT_LOAD_RENDER;
-				FT_UInt glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache,
-															&_face_id,
-														cmap_index,
-														unicode);
-
-				// Load glyph
-				FT_Glyph aglyph;
-#ifdef FREERTOS_CONFIG_H
-				if (g_UseRenderTask) {
-					if (g_RenderTaskHandle == NULL) {
-						debugPrintf((_debug_level & OFR_INFO), "Create render task\n");
-						const uint8_t RUNNING_CORE = 1;
-						const uint8_t PRIORITY     = 1;
-						xTaskCreateUniversal(RenderTask,
-						                     "RenderTask",
-						                     g_RenderTaskStackSize, // Seems to need a lot of memory.
-						                     NULL,
-						                     PRIORITY,
-						                     &g_RenderTaskHandle,
-						                     RUNNING_CORE);
-					}
-					while (g_RenderTaskStatus != IDLE) {
-						vTaskDelay(1);
-					}
-					g_RenderTaskStatus              = LOCK;
-					g_TaskParameter.ftc_image_cache = _ftc_image_cache;
-					g_TaskParameter.image_type      = image_type;
-					g_TaskParameter.glyph_index     = glyph_index;
-					g_TaskParameter.debug_level     = _debug_level;
-
-					g_RenderTaskStatus = RENDERING;
-					while (g_RenderTaskStatus == RENDERING) {
-						vTaskDelay(1);
-					}
-					debugPrintf((g_TaskParameter.debug_level & OFR_INFO), "Render task Finish\n");
-					aglyph             = g_TaskParameter.aglyph;
-					error              = g_TaskParameter.error;
-					g_RenderTaskStatus = IDLE;
-				} else {
-					error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
-				}
-#else
-				error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
-#endif
-				// error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
-				if (error) {
-					Serial.printf("FTC_ImageCache_Lookup error: 0x%02X\n", error);
-					Serial.flush();
-					break;
-				}
-				
-				if (aglyph->format != FT_GLYPH_FORMAT_BITMAP) {
-					FT_Error err = FT_Glyph_To_Bitmap(&aglyph, FT_RENDER_MODE_NORMAL, nullptr, true);
-					if (err) {
-						Serial.printf("Failed to convert to bitmap: %d\n", err);
-						Serial.flush();
-						continue;
-					}
-				}
-
-				// Adjust for horizontal bearing if it's the first character in the line
-				if (isFirstCharInLine) {
-					FT_Face aface;
-					FTC_Manager_LookupFace(_ftc_manager, &_face_id, &aface);
-					int32_t horiBearingX = aface->glyph->metrics.horiBearingX >> 6;
-					currentX -= horiBearingX; // Adjust starting position
-					isFirstCharInLine = false;
-				}
-				
-				// Draw at baseline position
-				FT_BitmapGlyph bit = (FT_BitmapGlyph)aglyph;
-				draw2screen(bit, currentX, baseline_y, _text.fg_color, _text.bg_color);
-
-				currentX += (aglyph->advance.x >> 16);
-				chars_written++;
+				baseline_y +=  (ascender - descender) * _text.line_space_ratio;
+				isFirstCharInLine = true;
+				continue;
 			}
+
+			image_type.flags = FT_LOAD_RENDER;
+			FT_UInt glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache,
+														&_face_id,
+													cmap_index,
+													unicode);
+
+			// Load glyph
+			FT_Glyph aglyph;
+#ifdef FREERTOS_CONFIG_H
+			if (g_UseRenderTask) {
+				if (g_RenderTaskHandle == NULL) {
+					debugPrintf((_debug_level & OFR_INFO), "Create render task\n");
+					const uint8_t RUNNING_CORE = 1;
+					const uint8_t PRIORITY     = 1;
+					xTaskCreateUniversal(RenderTask,
+											"RenderTask",
+											g_RenderTaskStackSize, // Seems to need a lot of memory.
+											NULL,
+											PRIORITY,
+											&g_RenderTaskHandle,
+											RUNNING_CORE);
+				}
+				while (g_RenderTaskStatus != IDLE) {
+					vTaskDelay(1);
+				}
+				g_RenderTaskStatus              = LOCK;
+				g_TaskParameter.ftc_image_cache = _ftc_image_cache;
+				g_TaskParameter.image_type      = image_type;
+				g_TaskParameter.glyph_index     = glyph_index;
+				g_TaskParameter.debug_level     = _debug_level;
+
+				g_RenderTaskStatus = RENDERING;
+				while (g_RenderTaskStatus == RENDERING) {
+					vTaskDelay(1);
+				}
+				debugPrintf((g_TaskParameter.debug_level & OFR_INFO), "Render task Finish\n");
+				aglyph             = g_TaskParameter.aglyph;
+				error              = g_TaskParameter.error;
+				g_RenderTaskStatus = IDLE;
+			} else {
+				error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
+			}
+#else
+			error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
+#endif
+
+			if (error){
+				debugPrintf((_debug_level & OFR_ERROR), "FTC_ImageCache_Lookup error: 0x%02X\n", error);
+			 return chars_written;
+			}
+
+			
+			if (aglyph->format != FT_GLYPH_FORMAT_BITMAP) {
+				error = FT_Glyph_To_Bitmap(&aglyph, FT_RENDER_MODE_NORMAL, nullptr, true);
+				if (error) { return chars_written; }
+			}
+
+			// Adjust for horizontal bearing if it's the first character in the line
+			if (isFirstCharInLine) {
+				FT_Face aface;
+				FTC_Manager_LookupFace(_ftc_manager, &_face_id, &aface);
+				int32_t horiBearingX = aface->glyph->metrics.horiBearingX >> 6;
+				currentX -= horiBearingX; // Adjust starting position
+				isFirstCharInLine = false;
+			}
+			
+			// Draw at baseline position
+			FT_BitmapGlyph bit = (FT_BitmapGlyph)aglyph;
+			draw2screen(bit, currentX, baseline_y, _text.fg_color, _text.bg_color);
+
+			currentX += (aglyph->advance.x >> 16);
+			chars_written++;
+		}
+		abbox.yMax = std::max(abbox.yMax, baseline_y + descender);
 	}
     return chars_written;
 }
