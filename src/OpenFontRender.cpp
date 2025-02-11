@@ -623,6 +623,9 @@ uint16_t OpenFontRender::drawHString(
 
 	//Get Vertical start position
 	switch (align) {
+		case Align::Left:
+		case Align::Center:
+		case Align::Right:
 		case Align::TopLeft:
 		case Align::TopCenter:
 		case Align::TopRight:
@@ -647,11 +650,13 @@ uint16_t OpenFontRender::drawHString(
 	    int32_t startX = x; // Default starting position
 
 		switch (align) {
+		case Align::Center:
         case Align::TopCenter:
         case Align::MiddleCenter:
         case Align::BottomCenter:
             startX -= (lineWidth / 2);
             break;
+		case Align::Right:
         case Align::TopRight:
         case Align::MiddleRight:
         case Align::BottomRight:
