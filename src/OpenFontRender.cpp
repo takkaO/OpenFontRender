@@ -672,7 +672,44 @@ uint16_t OpenFontRender::drawHString(
 
 				// Load glyph
 				FT_Glyph aglyph;
+#ifdef FREERTOS_CONFIG_H
+				if (g_UseRenderTask) {
+					if (g_RenderTaskHandle == NULL) {
+						debugPrintf((_debug_level & OFR_INFO), "Create render task\n");
+						const uint8_t RUNNING_CORE = 1;
+						const uint8_t PRIORITY     = 1;
+						xTaskCreateUniversal(RenderTask,
+						                     "RenderTask",
+						                     g_RenderTaskStackSize, // Seems to need a lot of memory.
+						                     NULL,
+						                     PRIORITY,
+						                     &g_RenderTaskHandle,
+						                     RUNNING_CORE);
+					}
+					while (g_RenderTaskStatus != IDLE) {
+						vTaskDelay(1);
+					}
+					g_RenderTaskStatus              = LOCK;
+					g_TaskParameter.ftc_image_cache = _ftc_image_cache;
+					g_TaskParameter.image_type      = image_type;
+					g_TaskParameter.glyph_index     = glyph_index;
+					g_TaskParameter.debug_level     = _debug_level;
+
+					g_RenderTaskStatus = RENDERING;
+					while (g_RenderTaskStatus == RENDERING) {
+						vTaskDelay(1);
+					}
+					debugPrintf((g_TaskParameter.debug_level & OFR_INFO), "Render task Finish\n");
+					aglyph             = g_TaskParameter.aglyph;
+					error              = g_TaskParameter.error;
+					g_RenderTaskStatus = IDLE;
+				} else {
+					error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
+				}
+#else
 				error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
+#endif
+				// error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
 				if (error) {
 					Serial.printf("FTC_ImageCache_Lookup error: 0x%02X\n", error);
 					Serial.flush();
