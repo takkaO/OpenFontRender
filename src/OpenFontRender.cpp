@@ -690,79 +690,83 @@ uint16_t OpenFontRender::drawHString(
 				isFirstCharInLine = true;
 				continue;
 			}
+			if(drawing == Drawing::Execute) {
+				// Load and process glyph
+				image_type.flags = FT_LOAD_RENDER;
+				FT_UInt glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache,
+															&_face_id,
+														cmap_index,
+														unicode);
 
-			image_type.flags = FT_LOAD_RENDER;
-			FT_UInt glyph_index = FTC_CMapCache_Lookup(_ftc_cmap_cache,
-														&_face_id,
-													cmap_index,
-													unicode);
-
-			// Load glyph
-			FT_Glyph aglyph;
+				// Load glyph
+				FT_Glyph aglyph;
 #ifdef FREERTOS_CONFIG_H
-			if (g_UseRenderTask) {
-				if (g_RenderTaskHandle == NULL) {
-					debugPrintf((_debug_level & OFR_INFO), "Create render task\n");
-					const uint8_t RUNNING_CORE = 1;
-					const uint8_t PRIORITY     = 1;
-					xTaskCreateUniversal(RenderTask,
-											"RenderTask",
-											g_RenderTaskStackSize, // Seems to need a lot of memory.
-											NULL,
-											PRIORITY,
-											&g_RenderTaskHandle,
-											RUNNING_CORE);
-				}
-				while (g_RenderTaskStatus != IDLE) {
-					vTaskDelay(1);
-				}
-				g_RenderTaskStatus              = LOCK;
-				g_TaskParameter.ftc_image_cache = _ftc_image_cache;
-				g_TaskParameter.image_type      = image_type;
-				g_TaskParameter.glyph_index     = glyph_index;
-				g_TaskParameter.debug_level     = _debug_level;
+				if (g_UseRenderTask) {
+					if (g_RenderTaskHandle == NULL) {
+						debugPrintf((_debug_level & OFR_INFO), "Create render task\n");
+						const uint8_t RUNNING_CORE = 1;
+						const uint8_t PRIORITY     = 1;
+						xTaskCreateUniversal(RenderTask,
+												"RenderTask",
+												g_RenderTaskStackSize, // Seems to need a lot of memory.
+												NULL,
+												PRIORITY,
+												&g_RenderTaskHandle,
+												RUNNING_CORE);
+					}
+					while (g_RenderTaskStatus != IDLE) {
+						vTaskDelay(1);
+					}
+					g_RenderTaskStatus              = LOCK;
+					g_TaskParameter.ftc_image_cache = _ftc_image_cache;
+					g_TaskParameter.image_type      = image_type;
+					g_TaskParameter.glyph_index     = glyph_index;
+					g_TaskParameter.debug_level     = _debug_level;
 
-				g_RenderTaskStatus = RENDERING;
-				while (g_RenderTaskStatus == RENDERING) {
-					vTaskDelay(1);
+					g_RenderTaskStatus = RENDERING;
+					while (g_RenderTaskStatus == RENDERING) {
+						vTaskDelay(1);
+					}
+					debugPrintf((g_TaskParameter.debug_level & OFR_INFO), "Render task Finish\n");
+					aglyph             = g_TaskParameter.aglyph;
+					error              = g_TaskParameter.error;
+					g_RenderTaskStatus = IDLE;
+				} else {
+					error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
 				}
-				debugPrintf((g_TaskParameter.debug_level & OFR_INFO), "Render task Finish\n");
-				aglyph             = g_TaskParameter.aglyph;
-				error              = g_TaskParameter.error;
-				g_RenderTaskStatus = IDLE;
-			} else {
-				error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
-			}
 #else
-			error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
+				error = FTC_ImageCache_Lookup(_ftc_image_cache, &image_type, glyph_index, &aglyph, NULL);
 #endif
 
-			if (error){
-				debugPrintf((_debug_level & OFR_ERROR), "FTC_ImageCache_Lookup error: 0x%02X\n", error);
-			 return chars_written;
-			}
+				if (error){
+					debugPrintf((_debug_level & OFR_ERROR), "FTC_ImageCache_Lookup error: 0x%02X\n", error);
+				return chars_written;
+				}
 
-			
-			if (aglyph->format != FT_GLYPH_FORMAT_BITMAP) {
-				error = FT_Glyph_To_Bitmap(&aglyph, FT_RENDER_MODE_NORMAL, nullptr, true);
-				if (error) { return chars_written; }
-			}
+				
+				if (aglyph->format != FT_GLYPH_FORMAT_BITMAP) {
+					error = FT_Glyph_To_Bitmap(&aglyph, FT_RENDER_MODE_NORMAL, nullptr, true);
+					if (error) { return chars_written; }
+				}
 
-			// Adjust for horizontal bearing if it's the first character in the line
-			if (isFirstCharInLine) {
-				FT_Face aface;
-				FTC_Manager_LookupFace(_ftc_manager, &_face_id, &aface);
-				int32_t horiBearingX = aface->glyph->metrics.horiBearingX >> 6;
-				currentX -= horiBearingX; // Adjust starting position
-				isFirstCharInLine = false;
-			}
-			
-			// Draw at baseline position
-			FT_BitmapGlyph bit = (FT_BitmapGlyph)aglyph;
-			draw2screen(bit, currentX, baseline_y, _text.fg_color, _text.bg_color);
+				// Adjust for horizontal bearing if it's the first character in the line
+				if (isFirstCharInLine) {
+					FT_Face aface;
+					FTC_Manager_LookupFace(_ftc_manager, &_face_id, &aface);
+					int32_t horiBearingX = aface->glyph->metrics.horiBearingX >> 6;
+					currentX -= horiBearingX; // Adjust starting position
+					isFirstCharInLine = false;
+				}
+				
+				// Draw at baseline position
+				
+				FT_BitmapGlyph bit = (FT_BitmapGlyph)aglyph;
+				draw2screen(bit, currentX, baseline_y, _text.fg_color, _text.bg_color);
 
-			currentX += (aglyph->advance.x >> 16);
-			chars_written++;
+				currentX += (aglyph->advance.x >> 16);
+				chars_written++;			
+			}
+		
 		}
 		abbox.yMax = std::max(abbox.yMax, baseline_y + descender);
 	}
