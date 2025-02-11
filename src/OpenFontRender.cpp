@@ -555,7 +555,6 @@ uint16_t OpenFontRender::drawHString(
 			if (line_bbox.xMin <= line_bbox.xMax) {
 				int32_t lineWidth = line_bbox.xMax - line_bbox.xMin;
 				lineWidths.push_back(lineWidth);
-				Serial.printf("Line width calculated (excluding trailing spaces): %d\n", lineWidth);
 			}
 			// Reset line_bbox for the next line
 			line_bbox.xMin = INT32_MAX;
@@ -600,7 +599,6 @@ uint16_t OpenFontRender::drawHString(
 	if (line_bbox.xMin <= line_bbox.xMax) {
 		int32_t lineWidth = line_bbox.xMax - line_bbox.xMin;
 		lineWidths.push_back(lineWidth);
-		Serial.printf("Last line width calculated (excluding trailing spaces): %d\n", lineWidth);
 	}
     
 	// Calculate position based on alignment
