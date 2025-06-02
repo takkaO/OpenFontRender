@@ -1,0 +1,4 @@
+<map id="OpenFontRender::calculateFitFontSize" name="OpenFontRender::calculateFitFontSize">
+<area shape="rect" id="node1" title="Calculates the maximum font size that will fit the specified string and the specified rectangle." alt="" coords="231,5,408,46"/>
+<area shape="rect" id="node2" href="$group__rendering__api.html#ga0d7c03d367320a39e784b9d8264605cc" title="Calculates the maximum font size that will fit the specified format string and the specified rectangl..." alt="" coords="5,5,183,46"/>
+</map>
