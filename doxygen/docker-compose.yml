@@ -7,7 +7,7 @@ services:
       - ../:/doxygen
     command: >
         PROJECT_NAME="Open Font Render"
-        PROJECT_NUMBER=1.2
+        PROJECT_NUMBER=2.0
         HTML_OUTPUT=${DOXYGEN_HTML_OUTPUT_DIR}
         OUTPUT_LANGUAGE=Japanese-en
         GENERATE_TREEVIEW=YES

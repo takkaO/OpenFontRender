@@ -435,16 +435,16 @@ FT_Error OpenFontRender::loadFont(const unsigned char *data, size_t size, uint8_
  * @param[in] (target_face_index) Load font index. Default is 0.
  * @return FreeType error code. 0 is success.
  * @ingroup rendering_api
- * @note SD card access is strongly hardware dependent, so for hardware other than M5Stack and Wio Terminal,
- * @note you will need to add file manipulation functions to FileSupport.cpp/.h.
+ * @note SD card access is strongly hardware dependent, so you will need to include preset in `ofrfs` or
+ * @note implement custom file I/O code (see Manuals).
  * @note Any better solutions are welcome.
  */
 FT_Error OpenFontRender::loadFont(const char *fpath, uint8_t target_face_index) {
-	size_t len = strlen(fpath);
+	size_t len = strlen(fpath) + 1; // +1 is for NULL character because strlen do not include NULL character
 
-	_face_id.filepath = new char[len + 1]; // Release on unloadFont method
+	_face_id.filepath = new char[len](); // Release on unloadFont method
 	strncpy(_face_id.filepath, fpath, len);
-	_face_id.filepath[len] = '\0';
+	_face_id.filepath[len - 1] = '\0'; // Not required but explicitly stated.
 
 	_face_id.face_index = target_face_index;
 	return loadFont(OFR::FROM_FILE);
@@ -650,7 +650,7 @@ uint16_t OpenFontRender::drawHString(
 			break;
 	}
 
-	abbox.yMin = std::min(abbox.yMin, baseline_y - ascender);
+	abbox.yMin = std::min(abbox.yMin, static_cast<FT_Pos>(baseline_y - ascender));
 	std::vector<std::pair<int32_t, int32_t>> linePositions; // To store starting positions for each line
 
 	// calculate x postion for each line.
@@ -768,7 +768,7 @@ uint16_t OpenFontRender::drawHString(
 			}
 		
 		}
-		abbox.yMax = std::max(abbox.yMax, baseline_y + descender);
+		abbox.yMax = std::max(abbox.yMax, static_cast<FT_Pos>(baseline_y + descender));
 	}
     return chars_written;
 }

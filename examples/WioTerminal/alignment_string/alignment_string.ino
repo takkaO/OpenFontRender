@@ -110,11 +110,11 @@ void loop()
 
 void refreshGridLine()
 {
-	M5.Lcd.fillScreen(TFT_BLACK);
-	M5.Lcd.drawFastVLine(10, 0, 240, TFT_DARKGREY);
-	M5.Lcd.drawFastVLine(160, 0, 240, TFT_DARKGREY);
-	M5.Lcd.drawFastVLine(310, 0, 240, TFT_DARKGREY);
-	M5.Lcd.drawFastHLine(0, 30, 320, TFT_DARKGREY);
-	M5.Lcd.drawFastHLine(0, 120, 320, TFT_DARKGREY);
-	M5.Lcd.drawFastHLine(0, 210, 320, TFT_DARKGREY);
+	tft.fillScreen(TFT_BLACK);
+	tft.drawFastVLine(10, 0, 240, TFT_DARKGREY);
+	tft.drawFastVLine(160, 0, 240, TFT_DARKGREY);
+	tft.drawFastVLine(310, 0, 240, TFT_DARKGREY);
+	tft.drawFastHLine(0, 30, 320, TFT_DARKGREY);
+	tft.drawFastHLine(0, 120, 320, TFT_DARKGREY);
+	tft.drawFastHLine(0, 210, 320, TFT_DARKGREY);
 }
